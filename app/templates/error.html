@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<section class="narrow error-page">
+  <h1>{{ title }}</h1>
+  <p class="lede">{{ message }}</p>
+  <p><a class="btn btn-primary" href="{{ url_for('portal.index') }}">Go to your dashboard</a></p>
+</section>
+{% endblock %}

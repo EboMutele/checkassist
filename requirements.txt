@@ -1,0 +1,4 @@
+Flask>=3.0,<4
+python-dotenv>=1.0
+pypdf>=4.0
+gunicorn>=22.0

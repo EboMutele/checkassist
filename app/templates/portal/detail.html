@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "macros.html" import status_pill, csrf, file_row, timeline with context %}
+{% block title %}{{ sub.title }}{% endblock %}
+{% block content %}
+<p class="crumbs"><a href="{{ url_for('portal.dashboard') }}">Your documents</a></p>
+<header class="page-head">
+  <div>
+    <h1>{{ sub.title }}</h1>
+    <p class="muted">Reference {{ sub.id|ref }}, submitted {{ sub.created_at|human_date }}</p>
+  </div>
+  {{ status_pill(sub.status) }}
+</header>
+
+{% set stage = {'submitted': 0, 'in_review': 1, 'needs_info': 1, 'completed': 2}[sub.status] %}
+<ol class="track" aria-label="Progress">
+  <li class="{{ 'done' if stage > 0 else 'current' }}">Submitted</li>
+  <li class="{{ 'done' if stage > 1 else ('current' if stage == 1 else '') }} {{ 'attention' if sub.status == 'needs_info' }}">
+    {{ 'Needs your input' if sub.status == 'needs_info' else 'In review' }}
+  </li>
+  <li class="{{ 'current' if stage == 2 else '' }}">Feedback ready</li>
+</ol>
+<p class="muted">{{ STATUSES[sub.status].user_hint }}</p>
+
+{% if sub.feedback_sent_at %}
+  <section class="feedback sheet" aria-labelledby="fb-title">
+    <h2 id="fb-title">Your feedback</h2>
+    <p class="muted small">Sent {{ sub.feedback_sent_at|human_date }}</p>
+    {% if sub.feedback %}<div class="feedback-body">{{ sub.feedback }}</div>{% endif %}
+    {% if results %}
+      <h3>Reviewed files</h3>
+      <ul class="files">{% for f in results %}{{ file_row(f) }}{% endfor %}</ul>
+    {% endif %}
+  </section>
+{% endif %}
+
+<div class="split">
+  <section aria-labelledby="files-title">
+    <h2 id="files-title">What you sent</h2>
+    <ul class="files">{% for f in originals %}{{ file_row(f) }}{% endfor %}</ul>
+    <h3>Your instructions</h3>
+    {% if sub.instructions %}<div class="prewrap">{{ sub.instructions }}</div>{% else %}<p class="muted">No extra instructions.</p>{% endif %}
+  </section>
+
+  <section id="conversation" aria-labelledby="conv-title">
+    <h2 id="conv-title">Messages and activity</h2>
+    {{ timeline(events, viewer='user') }}
+    <form method="post" action="{{ url_for('portal.reply', sub_id=sub.id) }}" class="form compose">
+      {{ csrf() }}
+      <label for="body">{{ 'Reply to your reviewer' if sub.status == 'needs_info' else 'Message your reviewer' }}</label>
+      <textarea id="body" name="body" rows="4" maxlength="5000" required></textarea>
+      <button type="submit" class="btn btn-primary">Send message</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,363 @@
+"""Admin pages: review queue, submission workspace, sending results, users."""
+import re
+
+from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
+
+from .auth import admin_required
+from .db import execute, get_db, query, utcnow
+from .helpers import OPEN_STATUSES, STATUSES, extract_preview, word_count
+from .notify import notify
+from .security import validate_upload
+from .storage import get_storage
+from .user_views import add_event, store_file
+
+bp = Blueprint("admin", __name__, url_prefix="/admin")
+
+PER_PAGE = 25
+TABS = [
+    ("open", "Open"),
+    ("submitted", "New"),
+    ("in_review", "In review"),
+    ("needs_info", "Waiting on user"),
+    ("mine", "Mine"),
+    ("completed", "Completed"),
+    ("all", "All"),
+]
+
+
+def _page():
+    try:
+        return max(int(request.args.get("page", 1)), 1)
+    except ValueError:
+        return 1
+
+
+def _search_clause(q, columns):
+    """LIKE search across columns, plus exact match on a CA-00012 style reference."""
+    like = f"%{q}%"
+    parts = [f"{c} LIKE ?" for c in columns]
+    args = [like] * len(columns)
+    m = re.fullmatch(r"(?i)(?:ca-?)?0*(\d{1,9})", q)
+    if m:
+        parts.append("s.id = ?")
+        args.append(int(m.group(1)))
+    return "(" + " OR ".join(parts) + ")", args
+
+
+def get_submission_or_404(sub_id):
+    sub = query(
+        "SELECT s.*, u.name AS user_name, u.email AS user_email, a.name AS assignee_name"
+        " FROM submissions s JOIN users u ON u.id = s.user_id LEFT JOIN users a ON a.id = s.assigned_to"
+        " WHERE s.id = ?",
+        (sub_id,),
+        one=True,
+    )
+    if sub is None:
+        abort(404)
+    return sub
+
+
+def _back(sub_id, anchor=""):
+    return redirect(url_for("admin.submission", sub_id=sub_id) + anchor)
+
+
+@bp.route("/")
+@admin_required
+def queue():
+    tab = request.args.get("tab", "open")
+    if tab not in dict(TABS):
+        tab = "open"
+    q = request.args.get("q", "").strip()[:100]
+    page = _page()
+
+    where, args = [], []
+    if tab == "open":
+        where.append(f"s.status IN ({','.join('?' * len(OPEN_STATUSES))})")
+        args.extend(OPEN_STATUSES)
+    elif tab == "mine":
+        where.append("s.assigned_to = ? AND s.status != 'completed'")
+        args.append(g.user["id"])
+    elif tab in STATUSES:
+        where.append("s.status = ?")
+        args.append(tab)
+    if q:
+        clause, extra = _search_clause(q, ["s.title", "u.email", "u.name"])
+        where.append(clause)
+        args.extend(extra)
+    where_sql = ("WHERE " + " AND ".join(where)) if where else ""
+    # Open work is first-in, first-out; finished work shows newest first.
+    order = "s.created_at ASC" if tab in ("open", "submitted", "in_review", "needs_info", "mine") else "s.updated_at DESC"
+    rows = query(
+        "SELECT s.*, u.name AS user_name, u.email AS user_email, a.name AS assignee_name"
+        " FROM submissions s JOIN users u ON u.id = s.user_id LEFT JOIN users a ON a.id = s.assigned_to"
+        f" {where_sql} ORDER BY {order} LIMIT ? OFFSET ?",
+        (*args, PER_PAGE + 1, (page - 1) * PER_PAGE),
+    )
+    has_next = len(rows) > PER_PAGE
+    rows = rows[:PER_PAGE]
+
+    counts = {r["status"]: r["n"] for r in query("SELECT status, COUNT(*) AS n FROM submissions GROUP BY status")}
+    counts["open"] = sum(counts.get(s, 0) for s in OPEN_STATUSES)
+    counts["all"] = sum(counts.get(s, 0) for s in STATUSES)
+    counts["mine"] = query(
+        "SELECT COUNT(*) AS n FROM submissions WHERE assigned_to = ? AND status != 'completed'",
+        (g.user["id"],),
+        one=True,
+    )["n"]
+    stats = query(
+        "SELECT"
+        " (SELECT MIN(created_at) FROM submissions WHERE status IN ('submitted','in_review')) AS oldest_open,"
+        " (SELECT COUNT(*) FROM submissions WHERE feedback_sent_at >= strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 days')) AS done_7d,"
+        " (SELECT AVG((julianday(feedback_sent_at) - julianday(created_at)) * 24) FROM submissions"
+        "   WHERE feedback_sent_at >= strftime('%Y-%m-%dT%H:%M:%SZ','now','-30 days')) AS avg_hours_30d",
+        one=True,
+    )
+    return render_template(
+        "admin/queue.html", rows=rows, tab=tab, tabs=TABS, q=q, page=page, has_next=has_next,
+        counts=counts, stats=stats,
+    )
+
+
+@bp.route("/submissions/<int:sub_id>")
+@admin_required
+def submission(sub_id):
+    sub = get_submission_or_404(sub_id)
+    files = query("SELECT * FROM files WHERE submission_id = ? ORDER BY id", (sub_id,))
+    originals = [f for f in files if f["kind"] == "original"]
+    results = [f for f in files if f["kind"] == "result"]
+    preview = None
+    if originals:
+        first = originals[0]
+        preview = extract_preview(get_storage().path(first["stored_name"]), first["ext"])
+    events = query(
+        "SELECT e.*, u.name AS actor_name, u.role AS actor_role FROM events e LEFT JOIN users u ON u.id = e.actor_id"
+        " WHERE e.submission_id = ? ORDER BY e.created_at, e.id",
+        (sub_id,),
+    )
+    admins = query("SELECT id, name FROM users WHERE role = 'admin' AND is_active = 1 ORDER BY name")
+    other_count = query(
+        "SELECT COUNT(*) AS n FROM submissions WHERE user_id = ? AND id != ?", (sub["user_id"], sub_id), one=True
+    )["n"]
+    execute(
+        "UPDATE notifications SET is_read = 1 WHERE user_id = ? AND submission_id = ? AND is_read = 0",
+        (g.user["id"], sub_id),
+    )
+    return render_template(
+        "admin/detail.html", sub=sub, originals=originals, results=results, preview=preview,
+        preview_words=word_count(preview), events=events, admins=admins, other_count=other_count,
+    )
+
+
+def _set_status(sub, new_status, notify_user=True):
+    """Change status, log it and tell the customer. Caller commits."""
+    if new_status == sub["status"]:
+        return False
+    get_db().execute(
+        "UPDATE submissions SET status = ?, updated_at = ? WHERE id = ?", (new_status, utcnow(), sub["id"])
+    )
+    add_event(sub["id"], g.user["id"], "status", new_status)
+    return notify_user
+
+
+@bp.route("/submissions/<int:sub_id>/claim", methods=("POST",))
+@admin_required
+def claim(sub_id):
+    sub = get_submission_or_404(sub_id)
+    conn = get_db()
+    conn.execute(
+        "UPDATE submissions SET assigned_to = ?, updated_at = ? WHERE id = ?", (g.user["id"], utcnow(), sub_id)
+    )
+    add_event(sub_id, g.user["id"], "assigned", g.user["name"], internal=True)
+    changed = sub["status"] == "submitted" and _set_status(sub, "in_review")
+    conn.commit()
+    if changed:
+        notify([sub["user_id"]], f"A reviewer has started on “{sub['title']}”.", sub_id)
+    flash("You're now reviewing this document.", "success")
+    return _back(sub_id)
+
+
+@bp.route("/submissions/<int:sub_id>/assign", methods=("POST",))
+@admin_required
+def assign(sub_id):
+    get_submission_or_404(sub_id)
+    raw = request.form.get("assignee", "")
+    assignee = None
+    if raw:
+        row = query("SELECT id, name FROM users WHERE id = ? AND role = 'admin' AND is_active = 1", (raw,), one=True)
+        if row is None:
+            abort(400, description="Pick a valid reviewer.")
+        assignee = row
+    conn = get_db()
+    conn.execute(
+        "UPDATE submissions SET assigned_to = ?, updated_at = ? WHERE id = ?",
+        (assignee["id"] if assignee else None, utcnow(), sub_id),
+    )
+    add_event(sub_id, g.user["id"], "assigned", assignee["name"] if assignee else "Unassigned", internal=True)
+    conn.commit()
+    if assignee and assignee["id"] != g.user["id"]:
+        notify([assignee["id"]], f"{g.user['name']} assigned you a document.", sub_id)
+    flash("Assignment updated.", "success")
+    return _back(sub_id)
+
+
+@bp.route("/submissions/<int:sub_id>/status", methods=("POST",))
+@admin_required
+def set_status(sub_id):
+    sub = get_submission_or_404(sub_id)
+    new_status = request.form.get("status", "")
+    if new_status not in STATUSES:
+        abort(400, description="Unknown status.")
+    if new_status == "completed" and not sub["feedback_sent_at"]:
+        flash("Use “Send results” to complete a review so the customer gets their feedback.", "error")
+        return _back(sub_id, "#results")
+    conn = get_db()
+    changed = _set_status(sub, new_status)
+    conn.commit()
+    if changed:
+        label = STATUSES[new_status]["label"]
+        notify(
+            [sub["user_id"]],
+            f"“{sub['title']}” is now: {label}.",
+            sub_id,
+            email_subject=f"Update on “{sub['title']}”" if new_status == "needs_info" else None,
+            link_endpoint="portal.submission",
+        )
+        flash(f"Status set to {label}.", "success")
+    return _back(sub_id)
+
+
+@bp.route("/submissions/<int:sub_id>/message", methods=("POST",))
+@admin_required
+def message(sub_id):
+    sub = get_submission_or_404(sub_id)
+    body = request.form.get("body", "").strip()[:5000]
+    internal = request.form.get("visibility") == "internal"
+    ask = request.form.get("request_info") == "1" and not internal
+    if not body:
+        flash("Write a message first.", "error")
+        return _back(sub_id, "#conversation")
+    conn = get_db()
+    add_event(sub_id, g.user["id"], "note" if internal else "message", body, internal=internal)
+    if ask:
+        _set_status(sub, "needs_info")
+    conn.execute("UPDATE submissions SET updated_at = ? WHERE id = ?", (utcnow(), sub_id))
+    conn.commit()
+    if not internal:
+        text = (
+            f"Your reviewer has a question about “{sub['title']}”."
+            if ask
+            else f"New message from your reviewer on “{sub['title']}”."
+        )
+        notify(
+            [sub["user_id"]], text, sub_id,
+            email_subject=f"Message about “{sub['title']}”", link_endpoint="portal.submission",
+        )
+    flash("Internal note added." if internal else "Message sent to the customer.", "success")
+    return _back(sub_id, "#conversation")
+
+
+@bp.route("/submissions/<int:sub_id>/results", methods=("POST",))
+@admin_required
+def results(sub_id):
+    sub = get_submission_or_404(sub_id)
+    action = request.form.get("action", "save")
+    feedback = request.form.get("feedback", "").strip()[:50_000]
+    uploads = [f for f in request.files.getlist("result_files") if f and f.filename]
+
+    checked = []
+    for upload in uploads:
+        ext, error = validate_upload(upload)
+        if error:
+            flash(f"{upload.filename}: {error}", "error")
+            return _back(sub_id, "#results")
+        checked.append((upload, ext))
+
+    conn = get_db()
+    for upload, ext in checked:
+        store_file(upload, ext, sub_id, "result", g.user["id"], visible=False)
+        add_event(sub_id, g.user["id"], "file_added", upload.filename, internal=True)
+    conn.execute("UPDATE submissions SET feedback = ?, updated_at = ? WHERE id = ?", (feedback, utcnow(), sub_id))
+
+    if action == "send":
+        has_files = query(
+            "SELECT 1 FROM files WHERE submission_id = ? AND kind = 'result'", (sub_id,), one=True
+        ) or checked
+        if not feedback and not has_files:
+            conn.rollback()
+            flash("Add written feedback or attach a reviewed file before sending.", "error")
+            return _back(sub_id, "#results")
+        now = utcnow()
+        resend = bool(sub["feedback_sent_at"])
+        conn.execute(
+            "UPDATE submissions SET feedback_sent_at = ?, assigned_to = COALESCE(assigned_to, ?), updated_at = ?"
+            " WHERE id = ?",
+            (now, g.user["id"], now, sub_id),
+        )
+        conn.execute("UPDATE files SET visible_to_user = 1 WHERE submission_id = ? AND kind = 'result'", (sub_id,))
+        add_event(sub_id, g.user["id"], "results_sent", "updated" if resend else "")
+        _set_status(sub, "completed")
+        conn.commit()
+        notify(
+            [sub["user_id"]],
+            f"Your {'updated ' if resend else ''}feedback for “{sub['title']}” is ready.",
+            sub_id,
+            email_subject=f"Your feedback is ready: {sub['title']}",
+            link_endpoint="portal.submission",
+        )
+        flash("Results sent. The customer has been notified.", "success")
+    else:
+        conn.commit()
+        flash("Draft saved. The customer can't see it until you send results.", "success")
+    return _back(sub_id, "#results")
+
+
+@bp.route("/files/<int:file_id>/delete", methods=("POST",))
+@admin_required
+def delete_file(file_id):
+    f = query("SELECT * FROM files WHERE id = ?", (file_id,), one=True)
+    if f is None:
+        abort(404)
+    if f["kind"] != "result":
+        abort(400, description="Customer originals can't be deleted here.")
+    conn = get_db()
+    conn.execute("DELETE FROM files WHERE id = ?", (file_id,))
+    add_event(f["submission_id"], g.user["id"], "file_removed", f["original_name"], internal=True)
+    conn.commit()
+    get_storage().delete(f["stored_name"])
+    flash(f"Removed {f['original_name']}.", "success")
+    return _back(f["submission_id"], "#results")
+
+
+@bp.route("/users")
+@admin_required
+def users():
+    q = request.args.get("q", "").strip()[:100]
+    page = _page()
+    where, args = "", []
+    if q:
+        where = "WHERE (u.email LIKE ? OR u.name LIKE ?)"
+        args = [f"%{q}%", f"%{q}%"]
+    rows = query(
+        "SELECT u.*, COUNT(s.id) AS total,"
+        " SUM(CASE WHEN s.status IN ('submitted','in_review','needs_info') THEN 1 ELSE 0 END) AS open,"
+        " MAX(s.updated_at) AS last_activity"
+        f" FROM users u LEFT JOIN submissions s ON s.user_id = u.id {where}"
+        " GROUP BY u.id ORDER BY u.created_at DESC LIMIT ? OFFSET ?",
+        (*args, PER_PAGE + 1, (page - 1) * PER_PAGE),
+    )
+    has_next = len(rows) > PER_PAGE
+    return render_template("admin/users.html", rows=rows[:PER_PAGE], q=q, page=page, has_next=has_next)
+
+
+@bp.route("/users/<int:user_id>")
+@admin_required
+def user_detail(user_id):
+    user = query("SELECT * FROM users WHERE id = ?", (user_id,), one=True)
+    if user is None:
+        abort(404)
+    subs = query(
+        "SELECT s.*, a.name AS assignee_name FROM submissions s LEFT JOIN users a ON a.id = s.assigned_to"
+        " WHERE s.user_id = ? ORDER BY s.created_at DESC",
+        (user_id,),
+    )
+    return render_template("admin/user_detail.html", user=user, subs=subs)

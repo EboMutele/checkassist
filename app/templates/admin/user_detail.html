@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "macros.html" import status_pill with context %}
+{% block title %}{{ user.name }}{% endblock %}
+{% block content %}
+<p class="crumbs"><a href="{{ url_for('admin.users') }}">Users</a></p>
+<header class="page-head">
+  <div>
+    <h1>{{ user.name }}</h1>
+    <p class="muted"><a href="mailto:{{ user.email }}">{{ user.email }}</a></p>
+  </div>
+</header>
+<dl class="facts">
+  <div><dt>Role</dt><dd>{{ 'Admin' if user.role == 'admin' else 'Customer' }}</dd></div>
+  <div><dt>Joined</dt><dd>{{ user.created_at|human_date }}</dd></div>
+  <div><dt>Last login</dt><dd>{{ user.last_login_at|human_date }}</dd></div>
+  <div><dt>Documents</dt><dd>{{ subs|length }}</dd></div>
+</dl>
+
+<h2>Documents</h2>
+{% if subs %}
+  <table class="queue">
+    <thead><tr><th scope="col">Document</th><th scope="col">Status</th><th scope="col">Reviewer</th><th scope="col">Received</th></tr></thead>
+    <tbody>
+      {% for s in subs %}
+        <tr>
+          <td data-label="Document"><a class="row-link" href="{{ url_for('admin.submission', sub_id=s.id) }}">{{ s.title }}</a><span class="muted small">{{ s.id|ref }}</span></td>
+          <td data-label="Status">{{ status_pill(s.status) }}</td>
+          <td data-label="Reviewer">{{ s.assignee_name or 'Unassigned' }}</td>
+          <td data-label="Received">{{ s.created_at|time_ago }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p class="empty-inline">This user hasn't uploaded anything yet.</p>
+{% endif %}
+{% endblock %}

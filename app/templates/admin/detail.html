@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% from "macros.html" import status_pill, csrf, file_row, timeline with context %}
+{% block title %}{{ sub.title }}{% endblock %}
+{% block body_class %}is-wide{% endblock %}
+{% block content %}
+<p class="crumbs"><a href="{{ url_for('admin.queue') }}">Review queue</a></p>
+<header class="page-head">
+  <div>
+    <h1>{{ sub.title }}</h1>
+    <p class="muted">
+      {{ sub.id|ref }} from <a href="{{ url_for('admin.user_detail', user_id=sub.user_id) }}">{{ sub.user_name }}</a>
+      ({{ sub.user_email }}{% if other_count %}, {{ other_count }} other document{{ 's' if other_count != 1 }}{% endif %}),
+      received {{ sub.created_at|human_date }}
+    </p>
+  </div>
+  {{ status_pill(sub.status) }}
+</header>
+
+<div class="workspace">
+  <div class="workspace-doc">
+    <section aria-labelledby="brief-title">
+      <h2 id="brief-title">Customer's instructions</h2>
+      {% if sub.instructions %}<div class="prewrap brief">{{ sub.instructions }}</div>{% else %}<p class="muted">No instructions given.</p>{% endif %}
+    </section>
+
+    <section aria-labelledby="orig-title">
+      <h2 id="orig-title">Original file</h2>
+      <ul class="files">{% for f in originals %}{{ file_row(f, show_preview=true) }}{% endfor %}</ul>
+    </section>
+
+    <section aria-labelledby="preview-title">
+      <h2 id="preview-title">Text preview {% if preview %}<span class="muted small">about {{ '{:,}'.format(preview_words) }} words</span>{% endif %}</h2>
+      {% if preview %}
+        <article class="sheet doc-preview">{{ preview }}</article>
+      {% else %}
+        <p class="muted">No text preview for this file type. Download it to read.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <aside class="workspace-panel" aria-label="Review actions">
+    <section class="panel-block">
+      <h2>Reviewer</h2>
+      {% if sub.assigned_to != current_user.id %}
+        <form method="post" action="{{ url_for('admin.claim', sub_id=sub.id) }}">
+          {{ csrf() }}
+          <button type="submit" class="btn btn-primary btn-block">{{ 'Take over this review' if sub.assigned_to else 'Start reviewing' }}</button>
+        </form>
+      {% endif %}
+      <form method="post" action="{{ url_for('admin.assign', sub_id=sub.id) }}" class="inline-form">
+        {{ csrf() }}
+        <label for="assignee" class="visually-hidden">Reviewer</label>
+        <select id="assignee" name="assignee">
+          <option value="">Unassigned</option>
+          {% for a in admins %}<option value="{{ a.id }}" {% if a.id == sub.assigned_to %}selected{% endif %}>{{ a.name }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="btn btn-quiet">Assign</button>
+      </form>
+
+      <form method="post" action="{{ url_for('admin.set_status', sub_id=sub.id) }}" class="inline-form">
+        {{ csrf() }}
+        <label for="status" class="visually-hidden">Status</label>
+        <select id="status" name="status">
+          {% for key, s in STATUSES.items() %}<option value="{{ key }}" {% if key == sub.status %}selected{% endif %}>{{ s.label }}</option>{% endfor %}
+        </select>
+        <button type="submit" class="btn btn-quiet">Set status</button>
+      </form>
+    </section>
+
+    <section class="panel-block" id="results">
+      <h2>Results for the customer</h2>
+      {% if sub.feedback_sent_at %}
+        <p class="callout callout-good">Sent {{ sub.feedback_sent_at|human_date }}. Sending again notifies the customer of the update.</p>
+      {% else %}
+        <p class="muted small">Nothing here is visible to the customer until you send results.</p>
+      {% endif %}
+      {% if results %}
+        <p class="label-like">Attached files</p>
+        <ul class="files compact">
+          {% for f in results %}{{ file_row(f, delete_url=url_for('admin.delete_file', file_id=f.id)) }}{% endfor %}
+        </ul>
+      {% endif %}
+      <form method="post" action="{{ url_for('admin.results', sub_id=sub.id) }}" enctype="multipart/form-data" class="form">
+        {{ csrf() }}
+        <label for="feedback">Written feedback</label>
+        <textarea id="feedback" name="feedback" rows="10" maxlength="50000" placeholder="Start with the most important change, then work down.">{{ sub.feedback }}</textarea>
+
+        <label for="result_files">Attach reviewed files</label>
+        <input id="result_files" name="result_files" type="file" multiple accept=".pdf,.doc,.docx,.odt,.rtf,.txt">
+
+        <div class="button-row">
+          <button type="submit" name="action" value="save" class="btn btn-quiet">Save draft</button>
+          <button type="submit" name="action" value="send" class="btn btn-primary"
+                  data-confirm="Send these results to {{ sub.user_name }}? They'll be emailed straight away.">Send results</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel-block" id="conversation">
+      <h2>Messages and activity</h2>
+      {{ timeline(events, viewer='admin') }}
+      <form method="post" action="{{ url_for('admin.message', sub_id=sub.id) }}" class="form compose" data-compose>
+        {{ csrf() }}
+        <fieldset class="segmented">
+          <legend class="visually-hidden">Who sees this</legend>
+          <label><input type="radio" name="visibility" value="customer" checked> Message customer</label>
+          <label><input type="radio" name="visibility" value="internal"> Internal note</label>
+        </fieldset>
+        <label for="msg-body" class="visually-hidden">Message</label>
+        <textarea id="msg-body" name="body" rows="4" maxlength="5000" required></textarea>
+        <label class="check" data-ask>
+          <input type="checkbox" name="request_info" value="1">
+          <span>This is a question. Mark as waiting on the customer.</span>
+        </label>
+        <button type="submit" class="btn btn-primary">Post</button>
+      </form>
+    </section>
+  </aside>
+</div>
+{% endblock %}

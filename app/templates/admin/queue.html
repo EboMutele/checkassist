@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "macros.html" import status_pill, pager with context %}
+{% block title %}Review queue{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>Review queue</h1>
+    <p class="muted queue-stats">
+      <span>{{ counts.open }} open</span>
+      {% if stats.oldest_open %}<span>oldest waiting since {{ stats.oldest_open|time_ago }}</span>{% endif %}
+      <span>{{ stats.done_7d }} sent in the last 7 days</span>
+      {% if stats.avg_hours_30d is not none %}{% set h = stats.avg_hours_30d %}<span>average turnaround {{ ('%d min'|format(h * 60)) if h < 1 else ('%.1f h'|format(h)) }}</span>{% endif %}
+    </p>
+  </div>
+  <form method="get" class="search" role="search">
+    <input type="hidden" name="tab" value="{{ tab }}">
+    <label for="q" class="visually-hidden">Search documents</label>
+    <input id="q" name="q" type="search" value="{{ q }}" placeholder="Title, customer or CA-00012">
+    <button type="submit" class="btn btn-quiet">Search</button>
+  </form>
+</header>
+
+<nav class="tabs" aria-label="Filter by status">
+  {% for key, label in tabs %}
+    <a href="{{ url_for('admin.queue', tab=key, q=q or None) }}" {% if key == tab %}aria-current="page"{% endif %}>
+      {{ label }} <span class="tab-count">{{ counts.get(key, 0) }}</span>
+    </a>
+  {% endfor %}
+</nav>
+
+{% if rows %}
+  <table class="queue">
+    <thead>
+      <tr><th scope="col">Document</th><th scope="col">Customer</th><th scope="col">Status</th><th scope="col">Reviewer</th><th scope="col">Received</th></tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+        <tr>
+          <td data-label="Document">
+            <a class="row-link" href="{{ url_for('admin.submission', sub_id=r.id) }}">{{ r.title }}</a>
+            <span class="muted small">{{ r.id|ref }}</span>
+          </td>
+          <td data-label="Customer"><a href="{{ url_for('admin.user_detail', user_id=r.user_id) }}">{{ r.user_name }}</a><span class="muted small">{{ r.user_email }}</span></td>
+          <td data-label="Status">{{ status_pill(r.status) }}</td>
+          <td data-label="Reviewer">{{ r.assignee_name or 'Unassigned' }}</td>
+          <td data-label="Received"><time datetime="{{ r.created_at }}" title="{{ r.created_at|human_date }}">{{ r.created_at|time_ago }}</time></td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {{ pager(page, has_next, 'admin.queue', tab=tab, q=q or None) }}
+{% else %}
+  <p class="empty-inline">
+    {% if q %}No documents match &ldquo;{{ q }}&rdquo; here. <a href="{{ url_for('admin.queue', tab='all', q=q) }}">Search all documents</a>.
+    {% elif tab == 'open' %}The queue is clear. New uploads will show up here.
+    {% else %}Nothing in this view.{% endif %}
+  </p>
+{% endif %}
+{% endblock %}

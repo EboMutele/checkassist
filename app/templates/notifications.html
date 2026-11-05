@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf with context %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<header class="page-head">
+  <h1>Notifications</h1>
+  {% if unread_count %}
+    <form method="post" action="{{ url_for('portal.notifications_read_all') }}">
+      {{ csrf() }}
+      <button type="submit" class="btn btn-quiet">Mark all as read</button>
+    </form>
+  {% endif %}
+</header>
+{% if items %}
+  <ul class="notice-list">
+    {% for n in items %}
+      <li class="{{ 'unread' if not n.is_read }}">
+        {% if n.submission_id %}
+          <a href="{{ url_for('admin.submission' if current_user.role == 'admin' else 'portal.submission', sub_id=n.submission_id) }}">{{ n.message }}</a>
+        {% else %}
+          <span>{{ n.message }}</span>
+        {% endif %}
+        <time datetime="{{ n.created_at }}" title="{{ n.created_at|human_date }}" class="muted small">{{ n.created_at|time_ago }}</time>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="empty-inline">Nothing yet. You'll see updates here when a reviewer starts on your document or sends feedback.</p>
+{% endif %}
+{% endblock %}

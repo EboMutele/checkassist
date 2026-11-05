@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %}{% if self.title() %} – {% endif %}{{ app_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Literata:ital,opsz,wght@0,7..72,400..700;1,7..72,400..500&display=swap">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <a class="wordmark" href="{{ url_for('portal.index') }}">
+        <svg class="wordmark-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13.5l5.2 5L21 5.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        {{ app_name }}
+      </a>
+      <nav class="nav" aria-label="Main">
+        {% if current_user %}
+          {% if current_user.role == 'admin' %}
+            <a href="{{ url_for('admin.queue') }}" {% if request.blueprint == 'admin' and request.endpoint != 'admin.users' and request.endpoint != 'admin.user_detail' %}aria-current="page"{% endif %}>Queue</a>
+            <a href="{{ url_for('admin.users') }}" {% if request.endpoint in ('admin.users', 'admin.user_detail') %}aria-current="page"{% endif %}>Users</a>
+          {% else %}
+            <a href="{{ url_for('portal.dashboard') }}" {% if request.endpoint in ('portal.dashboard', 'portal.submission') %}aria-current="page"{% endif %}>Documents</a>
+            <a href="{{ url_for('portal.new_submission') }}" {% if request.endpoint == 'portal.new_submission' %}aria-current="page"{% endif %}>Upload</a>
+          {% endif %}
+          <a href="{{ url_for('portal.notifications') }}" {% if request.endpoint == 'portal.notifications' %}aria-current="page"{% endif %}
+             aria-label="Notifications{% if unread_count %}, {{ unread_count }} unread{% endif %}">
+            Notifications{% if unread_count %} <span class="count">{{ unread_count }}</span>{% endif %}
+          </a>
+          <form method="post" action="{{ url_for('auth.logout') }}" class="nav-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="link-button">Log out</button>
+          </form>
+        {% else %}
+          <a href="{{ url_for('auth.login') }}">Log in</a>
+          <a href="{{ url_for('auth.register') }}" class="btn btn-small btn-primary">Create account</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="wrap {% block main_class %}{% endblock %}">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flashes" role="status">
+          {% for category, message in messages %}
+            <p class="flash flash-{{ category }}">{{ message }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <p>{{ app_name }}. Only you and our reviewers can open the files you upload.</p>
+    </div>
+  </footer>
+</body>
+</html>

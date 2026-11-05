@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "macros.html" import pager with context %}
+{% block title %}Users{% endblock %}
+{% block content %}
+<header class="page-head">
+  <h1>Users</h1>
+  <form method="get" class="search" role="search">
+    <label for="q" class="visually-hidden">Search users</label>
+    <input id="q" name="q" type="search" value="{{ q }}" placeholder="Name or email">
+    <button type="submit" class="btn btn-quiet">Search</button>
+  </form>
+</header>
+{% if rows %}
+  <table class="queue">
+    <thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Documents</th><th scope="col">Open</th><th scope="col">Joined</th><th scope="col">Last active</th></tr></thead>
+    <tbody>
+      {% for u in rows %}
+        <tr>
+          <td data-label="Name"><a class="row-link" href="{{ url_for('admin.user_detail', user_id=u.id) }}">{{ u.name }}</a><span class="muted small">{{ u.email }}</span></td>
+          <td data-label="Role">{{ 'Admin' if u.role == 'admin' else 'Customer' }}{% if not u.is_active %} (disabled){% endif %}</td>
+          <td data-label="Documents">{{ u.total }}</td>
+          <td data-label="Open">{{ u.open or 0 }}</td>
+          <td data-label="Joined">{{ u.created_at|time_ago }}</td>
+          <td data-label="Last active">{{ (u.last_activity or u.last_login_at)|time_ago }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {{ pager(page, has_next, 'admin.users', q=q or None) }}
+{% else %}
+  <p class="empty-inline">{% if q %}No users match &ldquo;{{ q }}&rdquo;.{% else %}No users yet.{% endif %}</p>
+{% endif %}
+{% endblock %}

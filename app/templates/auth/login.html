@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf with context %}
+{% block title %}Log in{% endblock %}
+{% block content %}
+<section class="narrow auth">
+  <h1>Log in</h1>
+  <form method="post" class="form">
+    {{ csrf() }}
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" autocomplete="email" required value="{{ email }}" autofocus>
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+    <button type="submit" class="btn btn-primary btn-block">Log in</button>
+  </form>
+  <p class="muted">New here? <a href="{{ url_for('auth.register') }}">Create an account</a></p>
+</section>
+{% endblock %}

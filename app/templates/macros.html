@@ -1,0 +1,75 @@
+{% macro status_pill(status) -%}
+<span class="pill pill-{{ STATUSES[status].tone }}">{{ STATUSES[status].label }}</span>
+{%- endmacro %}
+
+{% macro csrf() -%}
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{%- endmacro %}
+
+{% macro file_row(f, show_preview=false, delete_url=none) -%}
+<li class="file-row">
+  <span class="file-ext" aria-hidden="true">{{ f.ext }}</span>
+  <span class="file-meta">
+    <a href="{{ url_for('portal.download', file_id=f.id) }}" class="file-name">{{ f.original_name }}</a>
+    <span class="muted small">{{ f.size|file_size }}, added {{ f.created_at|time_ago }}{% if f.kind == 'result' and not f.visible_to_user %}, not sent yet{% endif %}</span>
+  </span>
+  <span class="file-actions">
+    {% if show_preview and f.ext in ('pdf', 'txt') %}
+      <a class="btn btn-small btn-quiet" href="{{ url_for('portal.download', file_id=f.id, inline=1) }}" target="_blank" rel="noopener">Open</a>
+    {% endif %}
+    <a class="btn btn-small btn-quiet" href="{{ url_for('portal.download', file_id=f.id) }}">Download</a>
+    {% if delete_url %}
+      <form method="post" action="{{ delete_url }}" data-confirm="Remove {{ f.original_name }}?">
+        {{ csrf() }}
+        <button type="submit" class="btn btn-small btn-danger-quiet">Remove</button>
+      </form>
+    {% endif %}
+  </span>
+</li>
+{%- endmacro %}
+
+{% macro timeline(events, viewer='user') -%}
+<ol class="timeline">
+  {% for e in events %}
+    {% if viewer == 'user' %}
+      {% set who = 'You' if e.actor_role == 'user' else 'Your reviewer' %}
+    {% else %}
+      {% set who = (e.actor_name or 'Deleted user') ~ (' (customer)' if e.actor_role == 'user' else '') %}
+    {% endif %}
+    {% if e.type in ('message', 'note') %}
+      <li class="msg {% if e.actor_role == 'admin' %}msg-reviewer{% else %}msg-customer{% endif %} {% if e.is_internal %}msg-internal{% endif %}">
+        <p class="msg-head">
+          <strong>{{ who }}</strong>
+          {% if e.is_internal %}<span class="tag">Internal note</span>{% endif %}
+          <time datetime="{{ e.created_at }}" title="{{ e.created_at|human_date }}" class="muted small">{{ e.created_at|time_ago }}</time>
+        </p>
+        <div class="msg-body">{{ e.body }}</div>
+      </li>
+    {% else %}
+      <li class="event {% if e.is_internal %}event-internal{% endif %}">
+        <span class="event-text">
+          {% if e.type == 'created' %}{{ who }} submitted the document.
+          {% elif e.type == 'status' %}Status changed to {{ STATUSES[e.body].label if e.body in STATUSES else e.body }}.
+          {% elif e.type == 'results_sent' %}{{ who }} sent {{ 'updated ' if e.body == 'updated' else '' }}feedback.
+          {% elif e.type == 'assigned' and e.body == e.actor_name %}{{ who }} took on this review.
+          {% elif e.type == 'assigned' %}{{ who }} set the reviewer to {{ e.body }}.
+          {% elif e.type == 'file_added' %}{{ who }} attached {{ e.body }} as a draft.
+          {% elif e.type == 'file_removed' %}{{ who }} removed {{ e.body }}.
+          {% else %}{{ e.type }}{% endif %}
+        </span>
+        <time datetime="{{ e.created_at }}" title="{{ e.created_at|human_date }}" class="muted small">{{ e.created_at|time_ago }}</time>
+      </li>
+    {% endif %}
+  {% endfor %}
+</ol>
+{%- endmacro %}
+
+{% macro pager(page, has_next, endpoint) -%}
+{% if page > 1 or has_next %}
+<nav class="pager" aria-label="Pages">
+  {% if page > 1 %}<a class="btn btn-small btn-quiet" href="{{ url_for(endpoint, page=page - 1, **kwargs) }}">Previous page</a>{% endif %}
+  <span class="muted small">Page {{ page }}</span>
+  {% if has_next %}<a class="btn btn-small btn-quiet" href="{{ url_for(endpoint, page=page + 1, **kwargs) }}">Next page</a>{% endif %}
+</nav>
+{% endif %}
+{%- endmacro %}

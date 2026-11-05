@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block body_class %}landing{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="hero-copy">
+    <h1>Real people read your writing and tell you what to fix.</h1>
+    <p class="lede">Upload an essay, report or application. A reviewer reads every page and sends back written notes and a marked-up copy.</p>
+    <p class="actions">
+      <a class="btn btn-primary" href="{{ url_for('auth.register') }}">Upload a document</a>
+      <a class="btn btn-quiet" href="{{ url_for('auth.login') }}">Log in</a>
+    </p>
+  </div>
+
+  <figure class="sheet sample" aria-label="Example of a reviewer's notes on a paragraph">
+    <div class="sample-text">
+      <p>Remote work changed how teams talk to each other. Many companies now rely on written updates instead of meetings,
+        <mark>which has both advantages and disadvantages that this essay will explore.</mark>
+        Writing things down forces a team to decide what it actually thinks.</p>
+      <p>Since 2020, the share of decisions made in documents rather than calls has risen at most companies I studied.</p>
+    </div>
+    <div class="sample-notes">
+      <p class="margin-note note-one">Cut this. Your real thesis is the next sentence, so lead with it.</p>
+      <p class="margin-note note-two">Which companies? Name them or cite the study.</p>
+    </div>
+  </figure>
+</section>
+
+<section class="how" aria-labelledby="how-title">
+  <h2 id="how-title">How it works</h2>
+  <ol class="steps">
+    <li>
+      <h3>Upload your document</h3>
+      <p>{{ allowed_label }}, up to {{ max_upload_mb }} MB. Tell us what you want checked.</p>
+    </li>
+    <li>
+      <h3>A reviewer reads it</h3>
+      <p>Follow progress from your dashboard. If something's unclear, your reviewer asks you there.</p>
+    </li>
+    <li>
+      <h3>Get your feedback</h3>
+      <p>Written notes plus a marked-up file. We email you the moment it's ready.</p>
+    </li>
+  </ol>
+</section>
+
+<section class="focus" aria-labelledby="focus-title">
+  <h2 id="focus-title">What reviewers look at</h2>
+  <dl class="focus-list">
+    <div><dt>Argument and structure</dt><dd>Does each section earn its place, and does the main point come through?</dd></div>
+    <div><dt>Clarity and grammar</dt><dd>Sentences that trip readers up, word choice, tone and consistency.</dd></div>
+    <div><dt>Sources and formatting</dt><dd>Citations, references and layout checked against the style you name.</dd></div>
+  </dl>
+</section>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf with context %}
+{% block title %}Upload a document{% endblock %}
+{% block content %}
+<section class="narrow">
+  <h1>Upload a document</h1>
+  <p class="lede">A reviewer reads the whole thing and sends back notes. We'll email you when your feedback is ready.</p>
+
+  <form method="post" enctype="multipart/form-data" class="form" data-upload-form>
+    {{ csrf() }}
+    <label for="title">Title</label>
+    <input id="title" name="title" required maxlength="200" value="{{ form.title }}" placeholder="e.g. History essay on the 1848 revolutions">
+
+    <label for="document">Document</label>
+    <div class="dropzone" data-dropzone>
+      <input id="document" name="document" type="file" required
+             accept=".pdf,.doc,.docx,.odt,.rtf,.txt" aria-describedby="file-hint">
+      <p class="dropzone-text" data-dropzone-text>Drag a file here or <span class="link-look">choose one</span></p>
+    </div>
+    <p id="file-hint" class="hint">{{ allowed_label }}, up to {{ max_upload_mb }} MB.</p>
+
+    <label for="instructions">What should the reviewer focus on? <span class="muted">(optional)</span></label>
+    <textarea id="instructions" name="instructions" rows="5" maxlength="5000"
+              placeholder="e.g. Check my argument holds together and that citations follow APA 7. Word limit is 2,000.">{{ form.instructions }}</textarea>
+
+    <label class="check">
+      <input type="checkbox" name="confirm_rights" value="1" required>
+      <span>I wrote this document or have permission to share it, and I understand a reviewer will read it.</span>
+    </label>
+
+    <button type="submit" class="btn btn-primary">Upload document</button>
+  </form>
+</section>
+{% endblock %}
