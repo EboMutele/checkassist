@@ -4,9 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{% endblock %}{% if self.title() %} – {% endif %}{{ app_name }}</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Literata:ital,opsz,wght@0,7..72,400..700;1,7..72,400..500&display=swap">
+  <meta name="description" content="Upload an essay, report or application. A real reviewer reads every page and sends back clear notes and a marked-up copy.">
+  <meta name="theme-color" content="#e9edf1">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="preload" href="{{ url_for('static', filename='fonts/newsreader.woff') }}" as="font" type="font/woff" crossorigin>
+  <link rel="preload" href="{{ url_for('static', filename='fonts/instrument-sans.woff') }}" as="font" type="font/woff" crossorigin>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </head>
@@ -14,14 +16,11 @@
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="topbar">
     <div class="wrap topbar-inner">
-      <a class="wordmark" href="{{ url_for('portal.index') }}">
-        <svg class="wordmark-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13.5l5.2 5L21 5.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        {{ app_name }}
-      </a>
+      <a class="wordmark" href="{{ url_for('portal.index') }}">{{ app_name }}</a>
       <nav class="nav" aria-label="Main">
         {% if current_user %}
           {% if current_user.role == 'admin' %}
-            <a href="{{ url_for('admin.queue') }}" {% if request.blueprint == 'admin' and request.endpoint != 'admin.users' and request.endpoint != 'admin.user_detail' %}aria-current="page"{% endif %}>Queue</a>
+            <a href="{{ url_for('admin.queue') }}" {% if request.blueprint == 'admin' and request.endpoint not in ('admin.users', 'admin.user_detail') %}aria-current="page"{% endif %}>Queue</a>
             <a href="{{ url_for('admin.users') }}" {% if request.endpoint in ('admin.users', 'admin.user_detail') %}aria-current="page"{% endif %}>Users</a>
           {% else %}
             <a href="{{ url_for('portal.dashboard') }}" {% if request.endpoint in ('portal.dashboard', 'portal.submission') %}aria-current="page"{% endif %}>Documents</a>
@@ -36,14 +35,16 @@
             <button type="submit" class="link-button">Log out</button>
           </form>
         {% else %}
-          <a href="{{ url_for('auth.login') }}">Log in</a>
-          <a href="{{ url_for('auth.register') }}" class="btn btn-small btn-primary">Create account</a>
+          <a href="{{ url_for('portal.index') }}#how" class="nav-optional">How it works</a>
+          <a href="{{ url_for('portal.index') }}#questions" class="nav-optional">Questions</a>
+          <a href="{{ url_for('auth.login') }}" {% if request.endpoint == 'auth.login' %}aria-current="page"{% endif %}>Log in</a>
+          <a href="{{ url_for('auth.register') }}" class="btn btn-small btn-outline">Upload a paper</a>
         {% endif %}
       </nav>
     </div>
   </header>
 
-  <main id="main" class="wrap {% block main_class %}{% endblock %}">
+  <main id="main" class="wrap">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         <div class="flashes" role="status">
@@ -57,8 +58,9 @@
   </main>
 
   <footer class="footer">
-    <div class="wrap">
-      <p>{{ app_name }}. Only you and our reviewers can open the files you upload.</p>
+    <div class="wrap footer-inner">
+      <p class="wordmark wordmark-small">{{ app_name }}</p>
+      <p>Your files are only opened by you and our review team. They're never added to any database or used to train AI.</p>
     </div>
   </footer>
 </body>

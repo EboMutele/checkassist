@@ -136,11 +136,18 @@ def submission(sub_id):
         " WHERE e.submission_id = ? AND e.is_internal = 0 ORDER BY e.created_at, e.id",
         (sub_id,),
     )
+    reviewer = None
+    if sub["assigned_to"]:
+        row = query("SELECT name FROM users WHERE id = ?", (sub["assigned_to"],), one=True)
+        if row and row["name"].strip():
+            reviewer = row["name"].split()[0]  # first name only
     execute(
         "UPDATE notifications SET is_read = 1 WHERE user_id = ? AND submission_id = ? AND is_read = 0",
         (g.user["id"], sub_id),
     )
-    return render_template("portal/detail.html", sub=sub, originals=originals, results=results, events=events)
+    return render_template(
+        "portal/detail.html", sub=sub, originals=originals, results=results, events=events, reviewer=reviewer
+    )
 
 
 @bp.route("/submissions/<int:sub_id>/reply", methods=("POST",))

@@ -6,7 +6,7 @@
   <h1>Upload a document</h1>
   <p class="lede">A reviewer reads the whole thing and sends back notes. We'll email you when your feedback is ready.</p>
 
-  <form method="post" enctype="multipart/form-data" class="form" data-upload-form>
+  <form method="post" enctype="multipart/form-data" class="form sheet sheet-pad" data-upload-form>
     {{ csrf() }}
     <label for="title">Title</label>
     <input id="title" name="title" required maxlength="200" value="{{ form.title }}" placeholder="e.g. History essay on the 1848 revolutions">

@@ -17,7 +17,7 @@
 {% endfor %}
 
 {% if subs %}
-  <ul class="doc-list">
+  <ul class="doc-list sheet">
     {% for s in subs %}
       <li>
         <a class="doc-row" href="{{ url_for('portal.submission', sub_id=s.id) }}">

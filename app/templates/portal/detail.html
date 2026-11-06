@@ -26,6 +26,7 @@
     <h2 id="fb-title">Your feedback</h2>
     <p class="muted small">Sent {{ sub.feedback_sent_at|human_date }}</p>
     {% if sub.feedback %}<div class="feedback-body">{{ sub.feedback }}</div>{% endif %}
+    {% if reviewer %}<p class="hand-note hand-sign">{{ reviewer }}, your reviewer</p>{% endif %}
     {% if results %}
       <h3>Reviewed files</h3>
       <ul class="files">{% for f in results %}{{ file_row(f) }}{% endfor %}</ul>

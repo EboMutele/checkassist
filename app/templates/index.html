@@ -1,54 +1,123 @@
 {% extends "base.html" %}
+{% block title %}Human review for essays and applications{% endblock %}
 {% block body_class %}landing{% endblock %}
 {% block content %}
-<section class="hero">
-  <div class="hero-copy">
-    <h1>Real people read your writing and tell you what to fix.</h1>
-    <p class="lede">Upload an essay, report or application. A reviewer reads every page and sends back written notes and a marked-up copy.</p>
-    <p class="actions">
-      <a class="btn btn-primary" href="{{ url_for('auth.register') }}">Upload a document</a>
-      <a class="btn btn-quiet" href="{{ url_for('auth.login') }}">Log in</a>
-    </p>
+<section class="hero sheet" aria-labelledby="hero-title">
+  <div class="hero-main">
+    <h1 id="hero-title">Check <span class="edit"><del aria-hidden="true">you're</del><ins>your</ins></span> paper before you hand it in.</h1>
+    <p class="lede">A real reviewer reads every page, flags missing citations and weak arguments, and sends back clear notes and a marked-up copy.</p>
+
+    <a class="hero-upload" href="{{ url_for('auth.register') }}">
+      <span class="hero-upload-box">
+        <strong>Upload your paper</strong>
+        <span>PDF or Word, up to {{ max_upload_mb }} MB</span>
+      </span>
+      <span class="btn btn-primary">Get it read</span>
+    </a>
+    <p class="hint">You'll create an account first, so only you can see your feedback.</p>
+
+    <ul class="promises">
+      <li>Read by a person, not software</li>
+      <li>Never added to any database</li>
+      <li>Only you and your reviewer can open it</li>
+    </ul>
   </div>
 
-  <figure class="sheet sample" aria-label="Example of a reviewer's notes on a paragraph">
-    <div class="sample-text">
-      <p>Remote work changed how teams talk to each other. Many companies now rely on written updates instead of meetings,
-        <mark>which has both advantages and disadvantages that this essay will explore.</mark>
-        Writing things down forces a team to decide what it actually thinks.</p>
-      <p>Since 2020, the share of decisions made in documents rather than calls has risen at most companies I studied.</p>
-    </div>
-    <div class="sample-notes">
-      <p class="margin-note note-one">Cut this. Your real thesis is the next sentence, so lead with it.</p>
-      <p class="margin-note note-two">Which companies? Name them or cite the study.</p>
-    </div>
+  <aside class="hero-margin" aria-label="Example reviewer notes">
+    <p class="margin-label">Example notes</p>
+    <p class="hand-note">Lead with this. It's your strongest line.<small>On your opening</small></p>
+    <p class="hand-note">Which historians? Name one and cite them.<small>On page 2</small></p>
+    <p class="hand-note hand-sign">Dana, your reviewer</p>
+  </aside>
+</section>
+
+<section class="getback" aria-labelledby="getback-title">
+  <div class="getback-copy">
+    <h2 id="getback-title">What you get back</h2>
+    <p>A short report that tells you what to fix first, and your own file with every edit marked. No scores to decode. Each flag comes with the reason and the fix.</p>
+    <ul class="checklist">
+      <li>Claims that need a source, and how to cite them</li>
+      <li>Where your argument holds and where it slips</li>
+      <li>Line edits for clarity, grammar and tone</li>
+      <li>Formatting checked against the style you name</li>
+    </ul>
+  </div>
+
+  <figure class="report sheet">
+    <figcaption class="report-head">
+      <span class="report-title">Review report</span>
+      <span class="muted small">Example: history essay, 1,940 words</span>
+    </figcaption>
+    <dl class="report-rows">
+      <div class="report-row">
+        <dt>Citations</dt>
+        <dd><span class="pill pill-bad">3 need a source</span></dd>
+        <dd class="report-why">Claims on pages 2 and 4 rest on “historians agree” with no reference.</dd>
+      </div>
+      <div class="report-row">
+        <dt>Argument</dt>
+        <dd><span class="pill pill-good">Holds together</span></dd>
+        <dd class="report-why">Your thesis is clear, but it arrives in paragraph two. Lead with it.</dd>
+      </div>
+      <div class="report-row">
+        <dt>Clarity</dt>
+        <dd><span class="pill pill-warn">12 line edits</span></dd>
+        <dd class="report-why">Mostly long sentences in the conclusion. All marked in your copy.</dd>
+      </div>
+    </dl>
+    <blockquote class="report-excerpt">
+      <p>…once order was threatened, <mark>historians agree that the middle classes abandoned the workers</mark> and the coalition split.</p>
+      <p class="hand-note hand-inline">Which historians? Cite at least one.</p>
+    </blockquote>
   </figure>
 </section>
 
-<section class="how" aria-labelledby="how-title">
+<section class="how" id="how" aria-labelledby="how-title">
   <h2 id="how-title">How it works</h2>
   <ol class="steps">
     <li>
-      <h3>Upload your document</h3>
-      <p>{{ allowed_label }}, up to {{ max_upload_mb }} MB. Tell us what you want checked.</p>
+      <h3>Upload your paper</h3>
+      <p>{{ allowed_label }}, up to {{ max_upload_mb }} MB. Tell us what you want checked and any word limit or citation style.</p>
     </li>
     <li>
-      <h3>A reviewer reads it</h3>
+      <h3>A reviewer reads all of it</h3>
       <p>Follow progress from your dashboard. If something's unclear, your reviewer asks you there.</p>
     </li>
     <li>
-      <h3>Get your feedback</h3>
-      <p>Written notes plus a marked-up file. We email you the moment it's ready.</p>
+      <h3>Get your notes and marked-up copy</h3>
+      <p>We email you the moment they're ready. Reply to your reviewer if anything needs explaining.</p>
     </li>
   </ol>
 </section>
 
-<section class="focus" aria-labelledby="focus-title">
-  <h2 id="focus-title">What reviewers look at</h2>
-  <dl class="focus-list">
-    <div><dt>Argument and structure</dt><dd>Does each section earn its place, and does the main point come through?</dd></div>
-    <div><dt>Clarity and grammar</dt><dd>Sentences that trip readers up, word choice, tone and consistency.</dd></div>
-    <div><dt>Sources and formatting</dt><dd>Citations, references and layout checked against the style you name.</dd></div>
-  </dl>
+<section class="faq" id="questions" aria-labelledby="faq-title">
+  <h2 id="faq-title">Questions</h2>
+  <div class="faq-list">
+    <details>
+      <summary>Who reads my paper?</summary>
+      <p>A reviewer on our team reads the whole document, start to finish. Your notes are written by that person, not generated.</p>
+    </details>
+    <details>
+      <summary>Is my paper private?</summary>
+      <p>Your file is stored privately so your reviewer can read it. It's never added to any database, never shared, and never used to train AI. Only you and our review team can open it.</p>
+    </details>
+    <details>
+      <summary>Will you rewrite it for me?</summary>
+      <p>No. Your reviewer shows you what to change and why, and you make the changes. The work stays yours.</p>
+    </details>
+    <details>
+      <summary>How long does a review take?</summary>
+      <p>{% if turnaround %}Most reviews are done {{ turnaround }}. {% endif %}Papers are reviewed in the order they arrive, and we email you as soon as your feedback is ready.</p>
+    </details>
+    <details>
+      <summary>What can I upload?</summary>
+      <p>Essays, reports, dissertation chapters, personal statements and cover letters, as {{ allowed_label }} files up to {{ max_upload_mb }} MB.</p>
+    </details>
+  </div>
+</section>
+
+<section class="closing sheet" aria-labelledby="closing-title">
+  <h2 id="closing-title">Hand it in knowing it's ready.</h2>
+  <a class="btn btn-primary" href="{{ url_for('auth.register') }}">Upload a paper</a>
 </section>
 {% endblock %}

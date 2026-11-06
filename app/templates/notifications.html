@@ -12,7 +12,7 @@
   {% endif %}
 </header>
 {% if items %}
-  <ul class="notice-list">
+  <ul class="notice-list sheet">
     {% for n in items %}
       <li class="{{ 'unread' if not n.is_read }}">
         {% if n.submission_id %}

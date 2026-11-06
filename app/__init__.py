@@ -35,6 +35,8 @@ def create_app(test_config=None):
         SMTP_FROM=os.environ.get("SMTP_FROM", "CheckAssist <no-reply@example.com>"),
         SMTP_TLS=_bool("SMTP_TLS", True),
         ADMIN_EMAIL_ALERTS=_bool("ADMIN_EMAIL_ALERTS", False),
+        # Shown on the homepage only when set, e.g. "within 2 working days".
+        TURNAROUND_TEXT=os.environ.get("TURNAROUND_TEXT", "").strip(),
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=_bool("SESSION_COOKIE_SECURE", False),
@@ -81,6 +83,7 @@ def create_app(test_config=None):
             "app_name": app.config["APP_NAME"],
             "allowed_label": security.ALLOWED_LABEL,
             "max_upload_mb": app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
+            "turnaround": app.config["TURNAROUND_TEXT"],
         }
 
     def _error(code, title, message):

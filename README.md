@@ -18,6 +18,10 @@ Customers upload documents. Your reviewers read them and send back written feedb
 
 **Built in:** password hashing, CSRF protection, login throttling, session rotation, file-type checks by content (not just extension), files stored outside the web root under random names, owner/admin-only downloads, security headers.
 
+## Design
+
+Paper on a grey desk, marked up in red pen. Headlines in Newsreader, interface text in Instrument Sans, and Caveat handwriting only for things a reviewer wrote. Fonts are self-hosted in `app/static/fonts` (OFL licences alongside), so pages load no third-party resources and the CSP stays `'self'`-only. Colour pairs meet WCAG AA contrast.
+
 ## Run it locally
 
 ```bash
@@ -42,7 +46,7 @@ The suite covers auth, CSRF, access control between customers, upload validation
 
 Any host that runs Python with a **persistent disk** works (Render, Railway, Fly.io, a VPS). SQLite and uploads both live on that disk.
 
-1. Set `APP_ENV=production`, a long random `SECRET_KEY`, `BASE_URL`, and `SESSION_COOKIE_SECURE=1`.
+1. Set `APP_ENV=production`, a long random `SECRET_KEY`, `BASE_URL`, and `SESSION_COOKIE_SECURE=1`. Optionally set `TURNAROUND_TEXT` (e.g. `within 2 working days`) to show a turnaround promise on the homepage.
 2. Point `DATABASE_PATH` and `UPLOAD_DIR` at the persistent disk (the Dockerfile uses `/data`).
 3. Start command: see `Procfile` (gunicorn). Or `docker build -t checkassist . && docker run -p 8000:8000 -v checkassist-data:/data --env-file .env checkassist`.
 4. Run `flask --app wsgi create-admin` once on the server.
@@ -59,6 +63,6 @@ Any host that runs Python with a **persistent disk** works (Render, Railway, Fly
 
 ## Before launch
 
-- Write the copy that's yours to decide: turnaround promise, pricing, terms of service and privacy policy (you're storing people's documents).
+- Decide the copy that's yours to make: turnaround promise (`TURNAROUND_TEXT`), pricing, terms of service and privacy policy (you're storing people's documents). The homepage's privacy promises must stay true if you add integrations.
 - Decide how long you keep files, then add a cleanup job.
 - Back up the `/data` disk.
