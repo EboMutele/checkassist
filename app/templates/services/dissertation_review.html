@@ -1,0 +1,51 @@
+{% extends "service.html" %}
+{% block h1 %}Dissertation and thesis review, a chapter at a time{% endblock %}
+{% block lede %}Long documents go wrong in ways a spellchecker can't see: a research question that shifts between chapters, a literature review that lists instead of argues, a method the results don't follow. A reviewer reads the whole thing and shows you where.{% endblock %}
+{% block cta %}Upload a chapter{% endblock %}
+
+{% block notes %}
+<p class="hand-note">RQ2 here isn't the RQ2 from Chapter 1.<small>On consistency</small></p>
+<p class="hand-note">This section summarises sources one by one. Group them by theme.<small>On the literature review</small></p>
+<p class="hand-note">Say why you chose interviews over a survey.<small>On methodology</small></p>
+{% endblock %}
+
+{% block checks_title %}What your reviewer checks, chapter by chapter{% endblock %}
+{% block checks %}
+<div><dt>Introduction</dt><dd>A research question or aim that's clear and specific, a defined scope, and a reason the study matters.</dd></div>
+<div><dt>Literature review</dt><dd>Sources compared and grouped by theme rather than summarised one by one, leading to the gap your study fills.</dd></div>
+<div><dt>Methodology</dt><dd>A method that fits the question, enough detail for someone to repeat it, and limitations you name before your examiner does.</dd></div>
+<div><dt>Results and discussion</dt><dd>Findings that answer your questions, claims the data supports, and a discussion that links back to the literature.</dd></div>
+<div><dt>All the way through</dt><dd>Citations and references, consistent terms and tense, headings and numbering, and line edits for clarity and grammar.</dd></div>
+{% endblock %}
+
+{% block body %}
+<section class="service-section service-prose" aria-labelledby="long-title">
+  <h2 id="long-title">How checks work for long documents</h2>
+  <p>One check covers up to {{ '{:,}'.format(words_per_check) }} words. A typical chapter fits in one. Longer documents use one more check for each extra {{ '{:,}'.format(words_per_check) }} words, so a {{ '{:,}'.format(example_words) }}-word dissertation uses {{ example_checks }} checks, or {{ example_pack_cost }} with a 10-check pack.</p>
+  <p>Send chapters as you finish them. You'll get notes while there's still time to act on them, and later chapters benefit from what you fixed in earlier ones. Then send the full draft at the end for a consistency read.</p>
+  <p>Long documents take longer to read than a short essay. The timer on your document shows how long it's been, and we text and email you when your notes are ready.</p>
+</section>
+<section class="service-section service-prose" aria-labelledby="proposal-title">
+  <h2 id="proposal-title">Research proposals</h2>
+  <p>Proposal due? We check that your aims, research questions and methods line up with each other, that your literature review justifies the study, and that your timeline and ethics sections cover what your department asks for.</p>
+</section>
+{% endblock %}
+
+{% block faq %}
+<details>
+  <summary>Is it allowed to get feedback on my dissertation?</summary>
+  <p>Most universities allow proofreading and feedback that doesn't change your content, but the rules vary and some ask you to declare it. Check your university's proofreading policy. We never write or rewrite content, which is the line most policies draw.</p>
+</details>
+<details>
+  <summary>Can you check formatting against my university's guide?</summary>
+  <p>Yes, if you tell us which rules apply: margins, heading levels, numbering, captions and referencing style. Paste the key rules in the instructions box when you upload.</p>
+</details>
+<details>
+  <summary>Do you review master's and PhD work?</summary>
+  <p>Yes: undergraduate dissertations, master's theses, PhD chapters and research proposals. Your reviewer reads for structure, argument and clarity, not for specialist accuracy in your field.</p>
+</details>
+<details>
+  <summary>Will my reviewer write or rewrite sections?</summary>
+  <p>No. We point out what isn't working and why, and you make the changes. That's what your supervisor and examiners expect, and it keeps the work yours.</p>
+</details>
+{% endblock %}

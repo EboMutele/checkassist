@@ -1,0 +1,50 @@
+{% extends "service.html" %}
+{% block h1 %}Essay review by a real person{% endblock %}
+{% block lede %}Upload your essay and a reviewer reads all of it: your argument, your evidence and every sentence. You get short notes on what to fix first and your own file with each edit marked{% if review_minutes %}, in about {{ review_minutes|minutes }}{% endif %}.{% endblock %}
+{% block cta %}Upload your essay{% endblock %}
+
+{% block notes %}
+<p class="hand-note">Your thesis turns up in paragraph three. Move it to the end of your introduction.<small>On structure</small></p>
+<p class="hand-note">This quote is doing your arguing for you. Add a line on what it shows.<small>On evidence</small></p>
+<p class="hand-note">140 words over. Paragraph 5 repeats paragraph 2.<small>On the word limit</small></p>
+{% endblock %}
+
+{% block checks %}
+<div><dt>Does it answer the question?</dt><dd>We read your title or prompt first, then check that every section works toward it. Where the essay drifts, we show you the paragraph and the sentence where it happens.</dd></div>
+<div><dt>Thesis and structure</dt><dd>Is your main point clear by the end of the introduction? Does each paragraph open with its job and link to the next? We mark where the order could be tighter.</dd></div>
+<div><dt>Evidence</dt><dd>Claims that need a source, quotes that are left to speak for themselves, and examples that don't support the point you use them for.</dd></div>
+<div><dt>Clarity and grammar</dt><dd>Long sentences, vague wording, grammar and spelling, marked in your copy so you can take or leave each edit.</dd></div>
+<div><dt>The brief</dt><dd>The word limit, the citation style and any formatting rules you give us, checked against the whole essay.</dd></div>
+{% endblock %}
+
+{% block body %}
+<section class="service-section service-prose" aria-labelledby="tips-title">
+  <h2 id="tips-title">Get more from your review</h2>
+  <p>Your reviewer can only check against what they know, so add these in the instructions box when you upload:</p>
+  <ul class="checklist">
+    <li>The essay question or prompt, word for word</li>
+    <li>The word limit and the citation style</li>
+    <li>Your marking criteria or rubric, if you have one (paste the key lines)</li>
+    <li>What you're least sure about, so your reviewer starts there</li>
+  </ul>
+</section>
+{% endblock %}
+
+{% block faq %}
+<details>
+  <summary>Will you correct my essay for me?</summary>
+  <p>We mark grammar and spelling corrections in your copy, and explain bigger changes in your notes. We don't rewrite your argument or add content. You make those changes, so the essay stays yours.</p>
+</details>
+<details>
+  <summary>What kinds of essays do you review?</summary>
+  <p>Coursework essays, argumentative and discursive essays, reflective essays, literature reviews and short reports, at school, college and university level. If it's a dissertation chapter, see <a href="{{ url_for('seo.dissertation_review') }}">dissertation review</a>; if it's an application, see <a href="{{ url_for('seo.personal_statement_review') }}">personal statement review</a>.</p>
+</details>
+<details>
+  <summary>Can I send a draft that isn't finished?</summary>
+  <p>Yes. Say it's a draft and what you want checked, and your reviewer will focus there. Early feedback is often the most useful, because there's still time to change the structure.</p>
+</details>
+<details>
+  <summary>How long does it take?</summary>
+  <p>{% if review_minutes %}About {{ review_minutes|minutes }} for most essays. {% endif %}A timer on your document shows how long it's been, and we text and email you as soon as your notes are ready.</p>
+</details>
+{% endblock %}

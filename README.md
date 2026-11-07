@@ -54,6 +54,23 @@ Any host that runs Python with a **persistent disk** works (Render, Railway, Fly
 5. For email, set the `SMTP_*` values (any provider: Postmark, SES, Resend, Mailgun…). Without them, notifications are in-app only.
 6. For texts, set `SMS_PROVIDER` to `africastalking` or `twilio` plus that provider's keys (see `.env.example`), and `DEFAULT_COUNTRY_CODE` if customers will type local numbers. Test with `AT_USERNAME=sandbox` first. Without a provider, sending results still works and the timeline notes that no text went out.
 
+## Search engines (SEO)
+
+**What's public.** The home page, pricing, five service pages (`/essay-review`, `/proofreading`, `/citation-check`, `/dissertation-review`, `/personal-statement-review`) and `/how-we-review`. They're listed in one place, `PAGES` in `app/seo.py`, which sets each page's title, description, canonical URL, share tags, structured data (schema.org Organization, WebSite, Service with prices) and sitemap entry. Prices and the review time in titles and descriptions come from `app/pricing.py` and `REVIEW_MINUTES`, so they can't drift.
+
+**Everything else is hidden by default.** Any page not in `PAGES` is sent with `X-Robots-Tag: noindex` (login, sign-up, documents, billing, admin, error pages), and `robots.txt` keeps crawlers out of the logged-in areas. A new page stays out of search until you add it to `PAGES`; bump its `updated` date when you change its content.
+
+**Indexing is off until production.** With `APP_ENV` anything but `production`, `robots.txt` blocks everything and every page is noindex, so a staging copy never competes with the live site.
+
+**Going live**
+1. Set `APP_ENV=production` and `BASE_URL` to the real address (canonical links and the sitemap use it). Optionally set `REDIRECT_TO_BASE_URL=1` so `www.` or your host's default address redirect to it.
+2. Add the site to [Google Search Console](https://search.google.com/search-console). A Domain property (verified by DNS) covers every host name; or use the HTML-tag method and put the code in `GOOGLE_SITE_VERIFICATION`.
+3. Submit `https://YOUR-SITE/sitemap.xml` there, and request indexing for the home page and the five service pages.
+4. In Bing Webmaster Tools, import the site from Search Console (Bing also feeds DuckDuckGo and others).
+5. Set `SUPPORT_EMAIL`: a visible contact address helps both trust and Paystack's account review.
+
+**Speed.** Static files get a content hash in their URL and a one-year cache; fonts are trimmed to the weights the site uses. Turn on gzip or Brotli at your host or CDN if it isn't on already (style.css drops from about 37 KB to under 9 KB).
+
 ## Review time and the timer
 
 **Stopwatch, never a countdown.** After uploading, customers see a timer counting up from 0:00: how long their review has taken so far. It's on the document page (with a ring that sweeps once a minute), in the browser tab title, and on their dashboard. Customers are never shown time remaining, an expected-by time or a deadline; when feedback is sent they see how long it took ("3 minutes after you uploaded"). Timers use the server's clock, so a phone set to the wrong time still shows the right figure.

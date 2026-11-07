@@ -3,10 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% if seo.page %}
+  <title>{{ seo.title }}</title>
+  <meta name="description" content="{{ seo.description }}">
+  <link rel="canonical" href="{{ seo.canonical }}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ seo.site_name }}">
+  <meta property="og:title" content="{{ seo.title }}">
+  <meta property="og:description" content="{{ seo.description }}">
+  <meta property="og:url" content="{{ seo.canonical }}">
+  <meta property="og:image" content="{{ seo.og_image }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="{{ seo.site_name }}: a paper marked up in red pen by a reviewer">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">{{ seo.structured_data|tojson }}</script>
+  {% else %}
   <title>{% block title %}{% endblock %}{% if self.title() %} – {% endif %}{{ app_name }}</title>
-  <meta name="description" content="Upload an essay, report or application. A real reviewer reads every page and sends back clear notes and a marked-up copy.">
+  {% endif %}
+  {% if not seo.indexable %}<meta name="robots" content="noindex">{% endif %}
+  {% if seo.google_verification %}<meta name="google-site-verification" content="{{ seo.google_verification }}">{% endif %}
+  {% if seo.bing_verification %}<meta name="msvalidate.01" content="{{ seo.bing_verification }}">{% endif %}
   <meta name="theme-color" content="#e9edf1">
+  <link rel="icon" href="/favicon.ico" sizes="48x48">
   <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='site.webmanifest') }}">
   <link rel="preload" href="{{ url_for('static', filename='fonts/newsreader.woff') }}" as="font" type="font/woff" crossorigin>
   <link rel="preload" href="{{ url_for('static', filename='fonts/instrument-sans.woff') }}" as="font" type="font/woff" crossorigin>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
@@ -63,8 +85,25 @@
 
   <footer class="footer">
     <div class="wrap footer-inner">
-      <p class="wordmark wordmark-small">{{ app_name }}</p>
-      <p>Your files are only opened by you and our review team. They're never added to any database or used to train AI.</p>
+      <div class="footer-about">
+        <p class="wordmark wordmark-small">{{ app_name }}</p>
+        <p>Your files are only opened by you and our review team. They're never added to any database or used to train AI.</p>
+        {% if support_email %}<p>Questions? <a href="mailto:{{ support_email }}">{{ support_email }}</a></p>{% endif %}
+      </div>
+      <nav class="footer-links" aria-label="What we check">
+        <h2 class="footer-head">What we check</h2>
+        <ul>
+          {% for s in services %}<li><a href="{{ url_for(s.endpoint) }}">{{ s.label }}</a></li>{% endfor %}
+        </ul>
+      </nav>
+      <nav class="footer-links" aria-label="About">
+        <h2 class="footer-head">About</h2>
+        <ul>
+          <li><a href="{{ url_for('portal.pricing_page') }}">Pricing</a></li>
+          <li><a href="{{ url_for('seo.how_we_review') }}">How we review</a></li>
+          <li><a href="{{ url_for('portal.index') }}#questions">Questions</a></li>
+        </ul>
+      </nav>
     </div>
   </footer>
 </body>

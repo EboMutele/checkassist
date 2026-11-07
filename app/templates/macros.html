@@ -2,6 +2,10 @@
 <span class="pill pill-{{ STATUSES[status].tone }}">{{ STATUSES[status].label }}</span>
 {%- endmacro %}
 
+{% macro upload_url() -%}
+{{ url_for('portal.new_submission') if current_user and current_user.role == 'user' else url_for('auth.register') }}
+{%- endmacro %}
+
 {% macro csrf() -%}
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 {%- endmacro %}

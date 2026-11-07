@@ -92,6 +92,16 @@
   </ol>
 </section>
 
+<section class="services" aria-labelledby="services-title">
+  <h2 id="services-title">What we check</h2>
+  <p class="services-intro">One check covers all of it. Pick the page that matches your document to see what your reviewer looks for.</p>
+  <ul class="service-links">
+    {% for s in services %}
+      <li><a class="service-link sheet" href="{{ url_for(s.endpoint) }}"><strong>{{ s.label }}</strong><span>{{ s.summary }}</span></a></li>
+    {% endfor %}
+  </ul>
+</section>
+
 <section class="pricing-teaser" id="pricing" aria-labelledby="price-title">
   <div class="pricing-teaser-copy">
     <h2 id="price-title">Pricing</h2>

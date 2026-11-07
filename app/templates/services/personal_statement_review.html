@@ -1,0 +1,50 @@
+{% extends "service.html" %}
+{% block h1 %}Personal statement review{% endblock %}
+{% block lede %}Admissions readers get through stacks of statements. A reviewer reads yours the same way, then shows you where it turns generic, where it loses the thread, and which line should open it.{% endblock %}
+{% block cta %}Upload your statement{% endblock %}
+
+{% block notes %}
+<p class="hand-note">Cut the opening quote. Start with the lab story.<small>On your opening</small></p>
+<p class="hand-note">“Passionate” tells me. Your volunteering paragraph shows me.<small>On evidence</small></p>
+<p class="hand-note">312 characters over. Paragraph 4 can go.<small>On the limit</small></p>
+{% endblock %}
+
+{% block checks %}
+<div><dt>Your opening</dt><dd>Does the first line make the reader want the second? We'll tell you if your best line is hiding further down.</dd></div>
+<div><dt>Show, don't list</dt><dd>Specific experiences and what you took from them, instead of adjectives like “hard-working” and “passionate”.</dd></div>
+<div><dt>Fit</dt><dd>Whether it answers what this course, scholarship or job is actually asking, not a statement you could send anywhere.</dd></div>
+<div><dt>Structure and limits</dt><dd>A clear thread from start to finish, and the character or word limit checked, with suggestions for what to cut.</dd></div>
+<div><dt>Every line</dt><dd>Grammar, spelling, clarity and tone, marked in your copy.</dd></div>
+{% endblock %}
+
+{% block body %}
+<section class="service-section service-prose" aria-labelledby="kinds-title">
+  <h2 id="kinds-title">What we review</h2>
+  <ul class="checklist">
+    <li>University personal statements, including UCAS</li>
+    <li>Statements of purpose for master's and PhD applications</li>
+    <li>Scholarship and bursary essays</li>
+    <li>Cover letters and motivation letters</li>
+  </ul>
+  <p>Applying through UCAS? From 2026 entry the statement is three answers, sharing 4,000 characters including spaces, with at least 350 for each. Tell us which answer is which and we'll check each one does its job.</p>
+</section>
+{% endblock %}
+
+{% block faq %}
+<details>
+  <summary>Will you write my personal statement?</summary>
+  <p>No. It has to sound like you, and admissions teams look for that. We show you what to cut, what to expand and what's unclear, and you rewrite it.</p>
+</details>
+<details>
+  <summary>Can you check it against the character limit?</summary>
+  <p>Yes. Tell us the limit and whether it counts spaces, and we'll say how far over or under you are and what to cut first.</p>
+</details>
+<details>
+  <summary>Can I send more than one draft?</summary>
+  <p>Yes. Each upload is read in full and uses one check, so many applicants buy a <a href="{{ url_for('portal.pricing_page') }}">pack</a> and send each draft as they go.</p>
+</details>
+<details>
+  <summary>Do you know what my university or scholarship wants?</summary>
+  <p>Paste the prompt and any guidance from the application into the instructions box. Your reviewer checks your statement against what they actually ask for.</p>
+</details>
+{% endblock %}
