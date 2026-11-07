@@ -58,6 +58,10 @@ Any host that runs Python with a **persistent disk** works (Render, Railway, Fly
 
 `REVIEW_MINUTES` (default 20) is measured from upload to the first time results are sent. Customers see an expected-by time in their own time zone; past it, they see a "taking a little longer" note instead of a countdown. While a reviewer is waiting on the customer's reply, the customer's countdown is hidden. Reviewers see minutes left or overdue on every open document.
 
+**Live timer.** After uploading, customers see a ring timer counting down to the promise, also shown in the browser tab title, and their dashboard and the reviewers' queue count down second by second. Timers use the server's clock, so a phone set to the wrong time still shows the right countdown. At zero the timer is replaced by an "almost there" note rather than counting into negative time. The open document page checks every 15 seconds for changes (picked up, question asked, feedback sent) and refreshes itself; if the customer is typing, it shows a banner instead so nothing is lost.
+
+**Fair clock.** Time spent waiting for the customer to answer a reviewer's question doesn't count, for the customer's timer, the reviewer's due time, or the on-time stats.
+
 ## Where integrations plug in
 
 | Later | Where |

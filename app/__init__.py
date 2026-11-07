@@ -78,8 +78,8 @@ def create_app(test_config=None):
         ref=helpers.ref,
         minutes=helpers.minutes_label,
         masked=sms.mask_phone,
+        clock=helpers.clock,
     )
-    app.jinja_env.globals["timing_for"] = lambda row: helpers.timing_for(row, app.config["REVIEW_MINUTES"])
 
     @app.context_processor
     def inject_globals():
@@ -100,6 +100,7 @@ def create_app(test_config=None):
             "max_upload_mb": app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
             "review_minutes": app.config["REVIEW_MINUTES"],
             "phone_cc": app.config["DEFAULT_COUNTRY_CODE"],
+            "server_now": db.utcnow(),  # lets live timers correct for a wrong device clock
         }
 
     def _error(code, title, message):

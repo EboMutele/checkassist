@@ -31,12 +31,13 @@
             <span class="doc-title">{{ s.title }}</span>
             <span class="muted small">{{ s.file_name }}</span>
           </span>
-          {% set t = timing_for(s) %}
+          {% set t = timings[s.id] %}
           <span class="doc-side">
             {{ status_pill(s.status) }}
-            <span class="muted small">
+            <span class="muted small" {% if t.state == 'due' %}data-countdown="{{ t.due_at }}" data-mode="inline" data-over-text="Almost there, we'll let you know"{% endif %}>
               {%- if t.state == 'due' %}Expected in about {{ t.minutes_left|minutes }}
-              {%- elif t.state == 'overdue' %}Almost there, we'll email you
+              {%- elif t.state == 'overdue' %}Almost there, we'll let you know
+              {%- elif t.state == 'waiting' %}Paused until you reply
               {%- elif t.state == 'done' %}Reviewed in {{ t.took|minutes }}
               {%- else %}Updated {{ s.updated_at|time_ago }}{% endif -%}
             </span>

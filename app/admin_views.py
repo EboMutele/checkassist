@@ -5,7 +5,9 @@ from flask import Blueprint, abort, current_app, flash, g, redirect, render_temp
 
 from .auth import admin_required
 from .db import execute, get_db, query, utcnow
-from .helpers import FIRST_SENT_SQL, OPEN_STATUSES, STATUSES, extract_preview, ref, timing, word_count
+from .helpers import (
+    FIRST_SENT_SQL, OPEN_STATUSES, STATUSES, extract_preview, load_timings, ref, status_events_of, timing, word_count,
+)
 from .notify import notify
 from .sms import feedback_ready_text, mask_phone, send_sms
 from .security import validate_upload
@@ -64,29 +66,23 @@ def _back(sub_id, anchor=""):
 
 def _turnaround_stats():
     """Last 7 days of first sends measured against the promise, plus what's overdue right now."""
+    # Computed in Python (not SQL) so time spent waiting on customers is excluded, same as the timers.
     minutes = current_app.config["REVIEW_MINUTES"]
-    week = query(
-        "SELECT COUNT(*) AS n, AVG(mins) AS avg_min, SUM(CASE WHEN mins <= ? THEN 1 ELSE 0 END) AS on_time FROM ("
-        " SELECT (julianday(first_sent) - julianday(created_at)) * 1440 AS mins FROM ("
-        f"  SELECT s.created_at, {FIRST_SENT_SQL} AS first_sent FROM submissions s)"
-        " WHERE first_sent >= strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-7 days'))",
-        (minutes,),
-        one=True,
+    sent_rows = query(
+        f"SELECT * FROM (SELECT s.id, s.created_at, s.status, {FIRST_SENT_SQL} AS first_sent_at FROM submissions s)"
+        " WHERE first_sent_at >= strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-7 days')"
     )
-    overdue = 0
-    if minutes:
-        overdue = query(
-            "SELECT COUNT(*) AS n FROM submissions s WHERE s.status IN ('submitted', 'in_review')"
-            f" AND {FIRST_SENT_SQL} IS NULL AND s.created_at < strftime('%Y-%m-%dT%H:%M:%SZ', 'now', ?)",
-            (f"-{minutes} minutes",),
-            one=True,
-        )["n"]
-    sent = week["n"] or 0
+    took = [t["took"] for t in load_timings(sent_rows, minutes).values() if t["state"] == "done"]
+    open_rows = query(
+        f"SELECT * FROM (SELECT s.id, s.created_at, s.status, {FIRST_SENT_SQL} AS first_sent_at FROM submissions s"
+        " WHERE s.status IN ('submitted', 'in_review')) WHERE first_sent_at IS NULL"
+    )
+    overdue = sum(1 for t in load_timings(open_rows, minutes).values() if t["state"] == "overdue")
     return {
         "minutes": minutes,
-        "sent_7d": sent,
-        "avg_min_7d": round(week["avg_min"]) if week["avg_min"] is not None else None,
-        "on_time_pct": round(100 * (week["on_time"] or 0) / sent) if sent and minutes else None,
+        "sent_7d": len(took),
+        "avg_min_7d": round(sum(took) / len(took)) if took else None,
+        "on_time_pct": round(100 * sum(1 for m in took if m <= minutes) / len(took)) if took and minutes else None,
         "overdue": overdue,
     }
 
@@ -135,9 +131,10 @@ def queue():
         one=True,
     )["n"]
     stats = _turnaround_stats()
+    timings = load_timings(rows, current_app.config["REVIEW_MINUTES"])
     return render_template(
         "admin/queue.html", rows=rows, tab=tab, tabs=TABS, q=q, page=page, has_next=has_next,
-        counts=counts, stats=stats,
+        counts=counts, stats=stats, timings=timings,
     )
 
 
@@ -166,7 +163,8 @@ def submission(sub_id):
         (g.user["id"], sub_id),
     )
     first_sent = next((e["created_at"] for e in events if e["type"] == "results_sent"), None)
-    t = timing(sub["created_at"], sub["status"], first_sent, current_app.config["REVIEW_MINUTES"])
+    t = timing(sub["created_at"], sub["status"], first_sent, current_app.config["REVIEW_MINUTES"],
+               status_events=status_events_of(events))
     return render_template(
         "admin/detail.html", sub=sub, originals=originals, results=results, preview=preview,
         preview_words=word_count(preview), events=events, admins=admins, other_count=other_count, t=t,

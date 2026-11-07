@@ -77,9 +77,9 @@
 
 {# Review-time status for reviewers: time left, overdue, waiting, or how long it took. #}
 {% macro due(t) -%}
-{% if t.state == 'due' %}<span class="due {{ 'due-soon' if t.minutes_left <= 5 }}">{{ t.minutes_left }} min left</span>
-{% elif t.state == 'overdue' %}<span class="due due-late">{{ t.minutes_over }} min overdue</span>
-{% elif t.state == 'waiting' %}<span class="due">Waiting on customer</span>
+{% if t.state == 'due' %}<span class="due {{ 'due-soon' if t.minutes_left <= 5 }}" data-countdown="{{ t.due_at }}" data-mode="reviewer">{{ t.minutes_left }} min left</span>
+{% elif t.state == 'overdue' %}<span class="due due-late" data-countdown="{{ t.due_at }}" data-mode="reviewer">{{ t.minutes_over }} min overdue</span>
+{% elif t.state == 'waiting' %}<span class="due">Paused, waiting on customer</span>
 {% elif t.state == 'done' %}<span class="due {{ 'due-done' if t.on_time else 'due-slow' }}">Took {{ t.took }} min</span>
 {% else %}<span class="due">—</span>{% endif %}
 {%- endmacro %}

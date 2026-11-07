@@ -54,7 +54,8 @@ def test_promise_can_be_switched_off(tmp_path):
 def test_customer_sees_expected_time_then_overdue_message(app, alice):
     sid = sub_id_from(upload(alice))
     page = alice.get(f"/submissions/{sid}").get_data(as_text=True)
-    assert "Expected by" in page and "in about 20 minutes" in page and "data-autorefresh" in page
+    assert "Expected by" in page and "in about 20 minutes" in page and "data-watch-status" in page
+    assert 'role="timer"' in page and (">20:00<" in page or ">19:59<" in page)
     _set_created(app, sid, 26)
     page = alice.get(f"/submissions/{sid}").get_data(as_text=True)
     assert "taking a little longer than usual" in page and "Expected by" not in page
@@ -105,4 +106,67 @@ def test_needs_info_pauses_customer_countdown(alice, admin):
     admin.post(f"/admin/submissions/{sid}/message", {"body": "Which style?", "visibility": "customer", "request_info": "1"})
     page = alice.get(f"/submissions/{sid}").get_data(as_text=True)
     assert "Expected by" not in page and "Your reviewer has a question" in page
-    assert "Waiting on customer" in admin.get("/admin/").get_data(as_text=True)
+    assert "Paused, waiting on customer" in admin.get("/admin/").get_data(as_text=True)
+
+
+# ---- pause while waiting on the customer, live timer, status polling ---------------
+
+from app.helpers import paused_seconds
+
+
+def test_paused_seconds_counts_only_needs_info_spans():
+    ev = [(_ts(NOW - timedelta(minutes=50)), "in_review"),
+          (_ts(NOW - timedelta(minutes=40)), "needs_info"),
+          (_ts(NOW - timedelta(minutes=10)), "in_review"),   # 30 min paused
+          (_ts(NOW - timedelta(minutes=6)), "needs_info")]   # still paused: 6 more
+    assert paused_seconds(ev, until=NOW) == 36 * 60
+    assert paused_seconds(ev, until=NOW - timedelta(minutes=20)) == 20 * 60  # capped
+
+
+def test_due_time_moves_out_by_the_pause():
+    created = _ts(NOW - timedelta(minutes=45))
+    ev = [(_ts(NOW - timedelta(minutes=40)), "needs_info"), (_ts(NOW - timedelta(minutes=10)), "in_review")]
+    t = timing(created, "in_review", None, 20, now=NOW, status_events=ev)
+    assert t["state"] == "due" and t["minutes_left"] == 5  # 45 elapsed - 30 paused = 15 active
+    done = timing(created, "completed", _ts(NOW), 20, now=NOW, status_events=ev)
+    assert done["took"] == 15 and done["on_time"]
+
+
+def test_reply_after_long_wait_does_not_make_it_overdue(app, alice, admin):
+    sid = sub_id_from(upload(alice))
+    admin.post(f"/admin/submissions/{sid}/message", {"body": "Which style?", "visibility": "customer", "request_info": "1"})
+    with app.app_context():  # pretend: uploaded 50 min ago, question asked 45 min ago
+        from app.db import execute
+        execute("UPDATE submissions SET created_at = ? WHERE id = ?", (_ts(datetime.now(timezone.utc) - timedelta(minutes=50)), sid))
+        execute("UPDATE events SET created_at = ? WHERE submission_id = ? AND type = 'status'",
+                (_ts(datetime.now(timezone.utc) - timedelta(minutes=45)), sid))
+    alice.post(f"/submissions/{sid}/reply", {"body": "APA please"})
+    page = alice.get(f"/submissions/{sid}").get_data(as_text=True)
+    assert 'role="timer"' in page and 'class="eta">This one is taking' not in page  # 5 active min used
+    assert ">15:00<" in page or ">14:59<" in page
+    assert "(1 overdue)" not in admin.get("/admin/").get_data(as_text=True)
+
+
+def test_timer_names_the_reviewer_once_claimed(alice, admin):
+    sid = sub_id_from(upload(alice))
+    assert "Your paper is next in line" in alice.get(f"/submissions/{sid}").get_data(as_text=True)
+    admin.post(f"/admin/submissions/{sid}/claim")
+    page = alice.get(f"/submissions/{sid}").get_data(as_text=True)
+    assert "Rita is reading your paper" in page and "text and email you" in page
+
+
+def test_status_endpoint_is_private_and_current(alice, bob, admin, client):
+    sid = sub_id_from(upload(alice))
+    r = alice.get(f"/submissions/{sid}/status.json")
+    assert r.status_code == 200 and r.json["status"] == "submitted" and r.headers["Cache-Control"] == "private, no-store"
+    assert bob.get(f"/submissions/{sid}/status.json").status_code == 404
+    assert client.get(f"/submissions/{sid}/status.json").status_code == 302  # logged out
+    admin.post(f"/admin/submissions/{sid}/claim")
+    assert alice.get(f"/submissions/{sid}/status.json").json["status"] == "in_review"
+
+
+def test_queue_and_dashboard_carry_live_countdowns(alice, admin):
+    sid = sub_id_from(upload(alice))
+    assert 'data-mode="reviewer"' in admin.get("/admin/").get_data(as_text=True)
+    assert 'data-mode="inline"' in alice.get("/dashboard").get_data(as_text=True)
+    assert sid

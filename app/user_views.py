@@ -2,11 +2,13 @@
 import os
 import re
 
-from flask import Blueprint, abort, current_app, flash, g, redirect, render_template, request, send_file, url_for
+from flask import (
+    Blueprint, abort, current_app, flash, g, jsonify, redirect, render_template, request, send_file, url_for,
+)
 
 from .auth import home_for, login_required
 from .db import execute, get_db, query, utcnow
-from .helpers import FIRST_SENT_SQL, OPEN_STATUSES, timing
+from .helpers import FIRST_SENT_SQL, OPEN_STATUSES, load_timings, status_events_of, timing
 from .notify import notify_admins
 from .security import INLINE_PREVIEW_TYPES, validate_upload
 from .storage import get_storage
@@ -76,8 +78,9 @@ def dashboard():
     )
     open_count = sum(1 for s in subs if s["status"] in OPEN_STATUSES)
     waiting_on_user = [s for s in subs if s["status"] == "needs_info"]
+    timings = load_timings(subs, current_app.config["REVIEW_MINUTES"])
     return render_template(
-        "portal/dashboard.html", subs=subs, open_count=open_count, waiting_on_user=waiting_on_user
+        "portal/dashboard.html", subs=subs, open_count=open_count, waiting_on_user=waiting_on_user, timings=timings
     )
 
 
@@ -147,10 +150,21 @@ def submission(sub_id):
         (g.user["id"], sub_id),
     )
     first_sent = next((e["created_at"] for e in events if e["type"] == "results_sent"), None)
-    t = timing(sub["created_at"], sub["status"], first_sent, current_app.config["REVIEW_MINUTES"])
+    t = timing(sub["created_at"], sub["status"], first_sent, current_app.config["REVIEW_MINUTES"],
+               status_events=status_events_of(events))
     return render_template(
         "portal/detail.html", sub=sub, originals=originals, results=results, events=events, reviewer=reviewer, t=t
     )
+
+
+@bp.route("/submissions/<int:sub_id>/status.json")
+@login_required
+def submission_status(sub_id):
+    """Polled by the open document page so it can update the moment feedback is sent."""
+    sub = own_submission_or_404(sub_id)
+    resp = jsonify(status=sub["status"], feedback_sent_at=sub["feedback_sent_at"], updated_at=sub["updated_at"])
+    resp.headers["Cache-Control"] = "private, no-store"
+    return resp
 
 
 @bp.route("/submissions/<int:sub_id>/reply", methods=("POST",))

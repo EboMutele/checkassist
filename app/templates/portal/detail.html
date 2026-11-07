@@ -12,7 +12,8 @@
 </header>
 
 {% set stage = {'submitted': 0, 'in_review': 1, 'needs_info': 1, 'completed': 2}[sub.status] %}
-{% if t.state in ('due', 'overdue') %}<div data-autorefresh="60" hidden></div>{% endif %}
+{% if sub.status != 'completed' %}<div data-watch-status="{{ url_for('portal.submission_status', sub_id=sub.id) }}" data-status="{{ sub.status }}" hidden></div>{% endif %}
+{% set contact = 'text and email you' if current_user.phone else 'email you' %}
 <ol class="track" aria-label="Progress">
   <li class="{{ 'done' if stage > 0 else 'current' }}">Submitted</li>
   <li class="{{ 'done' if stage > 1 else ('current' if stage == 1 else '') }} {{ 'attention' if sub.status == 'needs_info' }}">
@@ -21,9 +22,33 @@
   <li class="{{ 'current' if stage == 2 else '' }}">Feedback ready</li>
 </ol>
 {% if t.state == 'due' %}
-  <p class="eta">Expected by <time datetime="{{ t.due_at }}" data-local="time">{{ t.due_hhmm }} UTC</time>, in about {{ t.minutes_left|minutes }}. {{ STATUSES[sub.status].user_hint }}</p>
+  <section class="timer sheet" data-countdown="{{ t.due_at }}" data-total="{{ t.total_seconds }}" data-mode="customer"
+           data-title-countdown aria-labelledby="timer-title">
+    <div class="timer-dial">
+      <svg class="timer-ring" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+        <circle class="timer-track" cx="60" cy="60" r="52"/>
+        <circle class="timer-progress" cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="100"
+                stroke-dashoffset="{{ '%.2f'|format(100 * (1 - [t.seconds_left / t.total_seconds, 1]|min)) }}"/>
+      </svg>
+      <p class="timer-face"><span class="timer-time" data-countdown-text role="timer">{{ t.seconds_left|clock }}</span><span class="timer-unit">left</span></p>
+    </div>
+    <div class="timer-copy" data-timer-live>
+      <h2 id="timer-title">
+        {%- if sub.status == 'in_review' and reviewer %}{{ reviewer }} is reading your paper
+        {%- elif sub.status == 'in_review' %}Your reviewer is reading your paper
+        {%- else %}Your paper is next in line{% endif -%}
+      </h2>
+      <p>Expected by <time datetime="{{ t.due_at }}" data-local="time">{{ t.due_hhmm }} UTC</time>, in about {{ t.minutes_left|minutes }}. We'll {{ contact }} the moment it's ready. You can close this page.</p>
+    </div>
+    <div class="timer-copy" data-timer-over hidden>
+      <h2>Almost there</h2>
+      <p>This one is taking a little longer than usual. We'll {{ contact }} the moment it's ready.</p>
+    </div>
+  </section>
 {% elif t.state == 'overdue' %}
-  <p class="eta">This one is taking a little longer than usual. We'll let you know the moment your feedback is ready.</p>
+  <p class="eta">This one is taking a little longer than usual. We'll {{ contact }} the moment your feedback is ready.</p>
+{% elif t.state == 'waiting' %}
+  <p class="eta">The clock is paused until you reply. {{ STATUSES[sub.status].user_hint }}</p>
 {% else %}
   <p class="muted">{{ STATUSES[sub.status].user_hint }}</p>
 {% endif %}
