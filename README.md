@@ -66,7 +66,7 @@ Any host that runs Python with a **persistent disk** works (Render, Railway, Fly
 
 ## Pricing
 
-Prices live in one place, `app/pricing.py`; the pricing page, homepage section and FAQ all read from it. Current list: single check $4.99, 10 checks $39.99 ($4 each, save 20%), 20 checks $69.99 ($3.50, save 30%), monthly $240 for 80 checks ($3, save 40%). One check covers a document up to 2,500 words (`WORDS_PER_CHECK`); packs last 12 months; monthly checks carry over one month.
+Prices live in one place, `app/pricing.py`; the pricing page, homepage section and FAQ all read from it. Current list: single check $4.99, 10 checks $39.99 ($4 each, save 20%), 20 checks $69.99 ($3.50, save 30%), monthly $240 for 80 checks ($3, save 40%). One check covers a document up to 10,000 words (`WORDS_PER_CHECK`); packs last 12 months; monthly checks carry over one month.
 
 `tests/test_pricing.py` fails if an edit breaks the ladder: a bigger option must cost less per check, save at least 5 points more than the one before, and the monthly plan must be the cheapest per check.
 

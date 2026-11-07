@@ -31,14 +31,14 @@ def test_bigger_pack_costing_more_per_check_is_caught():
 
 def test_money_and_word_caps():
     assert [money(Decimal("4.99")), money(Decimal("240")), money(Decimal("1240.5"))] == ["$4.99", "$240", "$1,240.50"]
-    assert pricing.WORDS_PER_CHECK == 2500
-    assert [checks_for_words(n) for n in (0, 1800, 2500, 2501, 4000, 10000)] == [1, 1, 1, 2, 2, 4]
+    assert pricing.WORDS_PER_CHECK == 10000
+    assert [checks_for_words(n) for n in (0, 1800, 10000, 10001, 15000, 40000)] == [1, 1, 1, 2, 2, 4]
 
 
 def test_pricing_page_lists_every_plan(client):
     page = client.get("/pricing").get_data(as_text=True)
     for text in ("Single check", "$4.99", "10 checks", "$39.99", "20 checks", "$69.99", "Monthly", "$240",
-                 "save 20%", "save 30%", "save 40%", "2,500 words", "/month"):
+                 "save 20%", "save 30%", "save 40%", "10,000 words", "/month", "15,000-word"):
         assert text in page, text
     assert "2 checks" in page  # the worked example for a long document
 

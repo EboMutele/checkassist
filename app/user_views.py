@@ -77,7 +77,7 @@ def _pricing_context():
 
 @bp.route("/pricing")
 def pricing_page():
-    example_words = 4000
+    example_words = 15000
     return render_template(
         "pricing.html", plans=pricing.plans_for_display(), example_words=example_words,
         example_checks=pricing.checks_for_words(example_words), **_pricing_context(),

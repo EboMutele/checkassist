@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 
 CURRENCY = "$"
-WORDS_PER_CHECK = 2500      # one check covers a document up to this many words
+WORDS_PER_CHECK = 10000     # one check covers a document up to this many words
 PACK_VALID_MONTHS = 12      # packs: checks stay valid this long
 MIN_STEP_POINTS = 5         # each bigger option must save at least this many more % per check
 
