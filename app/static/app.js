@@ -99,51 +99,39 @@
   }, seconds * 1000);
 })();
 
-// Live countdowns: the customer's timer, dashboard rows and the reviewers' queue.
-// Times come from the server; we correct for a device clock that's off.
+// Live stopwatches: time taken so far on the customer's page, dashboard rows and the reviewers' queue.
+// Never shows time remaining. Uses the server's clock, so a device set to the wrong time still counts right.
 (function () {
   "use strict";
-  var timers = document.querySelectorAll("[data-countdown]");
+  var timers = document.querySelectorAll("[data-countup]");
   if (!timers.length) return;
   var serverNow = Date.parse(document.body.dataset.serverNow || "");
   var offset = isNaN(serverNow) ? 0 : serverNow - Date.now();
   var baseTitle = document.title;
+  function pad(n) { return ("0" + n).slice(-2); }
   function clock(ms) {
-    var s = Math.max(0, Math.ceil(ms / 1000));
-    return Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2);
+    var s = Math.max(0, Math.floor(ms / 1000));
+    var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+    return (h ? h + ":" + pad(m) : String(m)) + ":" + pad(s % 60);
   }
   function tick() {
     var now = Date.now() + offset;
     var title = null;
     timers.forEach(function (el) {
-      var left = Date.parse(el.dataset.countdown) - now;
-      var mode = el.dataset.mode;
-      var text = el.querySelector("[data-countdown-text]") || el;
-      if (isNaN(left)) return;
-      if (mode === "reviewer") {
-        text.textContent = left > 0 ? clock(left) + " left" : clock(-left) + " overdue";
-        el.classList.toggle("due-soon", left > 0 && left <= 5 * 60000);
-        el.classList.toggle("due-late", left <= 0);
+      var elapsed = now - Date.parse(el.dataset.countup);
+      if (isNaN(elapsed)) return;
+      var text = el.querySelector("[data-countup-text]") || el;
+      text.textContent = clock(elapsed) + (el.dataset.suffix || "");
+      var ring = el.querySelector(".timer-progress");  // sweeps once a minute, like a second hand
+      if (ring) ring.setAttribute("stroke-dashoffset", String(60 - (Math.floor(Math.max(0, elapsed) / 1000) % 60)));
+      if (el.hasAttribute("data-reviewer") && el.dataset.limit) {
+        var limit = Number(el.dataset.limit) * 1000;
+        el.classList.toggle("due-soon", elapsed >= limit - 5 * 60000 && elapsed <= limit);
+        el.classList.toggle("due-late", elapsed > limit);
         var row = el.closest("tr");
-        if (row) row.classList.toggle("row-late", left <= 0);
-        return;
+        if (row) row.classList.toggle("row-late", elapsed > limit);
       }
-      if (left > 0) {
-        text.textContent = mode === "inline" ? clock(left) + " left" : clock(left);
-        var ring = el.querySelector(".timer-progress");
-        var total = Number(el.dataset.total) * 1000;
-        if (ring && total > 0) ring.setAttribute("stroke-dashoffset", (100 * (1 - Math.min(1, left / total))).toFixed(2));
-        el.classList.toggle("is-soon", left <= 2 * 60000);
-        if (el.hasAttribute("data-title-countdown")) title = clock(left) + " left";
-        return;
-      }
-      if (!el.classList.contains("is-over")) {
-        el.classList.add("is-over");
-        if (mode === "inline") text.textContent = el.dataset.overText || "";
-        el.querySelectorAll("[data-timer-live]").forEach(function (n) { n.hidden = true; });
-        el.querySelectorAll("[data-timer-over]").forEach(function (n) { n.hidden = false; });
-      }
-      if (el.hasAttribute("data-title-countdown")) title = "Almost there";
+      if (el.hasAttribute("data-title-countup")) title = clock(elapsed);
     });
     document.title = title ? title + " – " + baseTitle : baseTitle;
   }

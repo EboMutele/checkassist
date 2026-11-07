@@ -75,11 +75,12 @@
 {% endif %}
 {%- endmacro %}
 
-{# Review-time status for reviewers: time left, overdue, waiting, or how long it took. #}
+{# Review time for reviewers: elapsed, amber in the last 5 minutes of the promise, red past it. #}
 {% macro due(t) -%}
-{% if t.state == 'due' %}<span class="due {{ 'due-soon' if t.minutes_left <= 5 }}" data-countdown="{{ t.due_at }}" data-mode="reviewer">{{ t.minutes_left }} min left</span>
-{% elif t.state == 'overdue' %}<span class="due due-late" data-countdown="{{ t.due_at }}" data-mode="reviewer">{{ t.minutes_over }} min overdue</span>
-{% elif t.state == 'waiting' %}<span class="due">Paused, waiting on customer</span>
+{% if t.running %}<span class="due {{ 'due-late' if t.state == 'overdue' else ('due-soon' if t.limit_seconds and t.elapsed_seconds >= t.limit_seconds - 300) }}"
+  data-countup="{{ t.started_at }}" {% if t.limit_seconds %}data-limit="{{ t.limit_seconds }}"{% endif %} data-reviewer
+  title="Time since upload{% if t.limit_seconds %}, target {{ (t.limit_seconds // 60) }} min{% endif %}">{{ t.elapsed_seconds|clock }}</span>
+{% elif t.state == 'waiting' %}<span class="due">Paused at {{ t.elapsed_seconds|clock }}</span>
 {% elif t.state == 'done' %}<span class="due {{ 'due-done' if t.on_time else 'due-slow' }}">Took {{ t.took }} min</span>
 {% else %}<span class="due">—</span>{% endif %}
 {%- endmacro %}

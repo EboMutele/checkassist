@@ -120,9 +120,10 @@ def minutes_label(n) -> str:
 
 
 def clock(seconds) -> str:
-    """12:05 style countdown text."""
-    s = max(0, int(math.ceil(seconds)))
-    return f"{s // 60}:{s % 60:02d}"
+    """Stopwatch text: 7:05, 12:05, 1:02:05."""
+    s = max(0, int(math.floor(seconds or 0)))
+    h, m, sec = s // 3600, s % 3600 // 60, s % 60
+    return f"{h}:{m:02d}:{sec:02d}" if h else f"{m}:{sec:02d}"
 
 
 def paused_seconds(status_events, until=None):
@@ -148,19 +149,23 @@ def paused_seconds(status_events, until=None):
 
 
 def timing(created_at, status, first_sent_at=None, review_minutes=20, now=None, status_events=()):
-    """Where a submission stands against the review-time promise.
+    """How long a submission has been in review, excluding time spent waiting on the customer.
 
-    Time spent waiting on the customer (status "needs_info") doesn't count.
+    Customers only ever see elapsed time (`elapsed_seconds`, ticking from `started_at`).
+    The promise (`review_minutes`) is used internally: reviewers' highlighting and stats.
+
     state is one of:
       "done"     feedback was sent; `took` is active minutes from upload to first send
-      "waiting"  the reviewer asked the customer something; the clock is paused
-      "due"      within the promise; `seconds_left`, `minutes_left`, `due_at`, `total_seconds`
-      "overdue"  past the promise; `minutes_over`, `due_at`
-      None       no promise configured, or nothing to say
+      "waiting"  the reviewer asked the customer something; the clock is paused at `elapsed_seconds`
+      "due"      running and within the promise
+      "overdue"  running and past the promise (reviewers only; customers see the same timer)
+      "running"  running, no promise configured
+      None       nothing to time
+    `running` is True for the last three.
     """
     now = now or datetime.now(timezone.utc)
     created = parse_ts(created_at)
-    t = {"state": None, "promise": review_minutes}
+    t = {"state": None, "promise": review_minutes, "running": False}
     if created is None:
         return t
     if first_sent_at:
@@ -169,21 +174,23 @@ def timing(created_at, status, first_sent_at=None, review_minutes=20, now=None, 
         took = max(1, round(active / 60))
         t.update(state="done", took=took, on_time=bool(review_minutes) and took <= review_minutes)
         return t
+    if status == "completed":
+        return t
+    paused = paused_seconds(status_events, until=now)
+    elapsed = max(0.0, (now - created).total_seconds() - paused)
+    t["elapsed_seconds"] = elapsed
     if status == "needs_info":
         t["state"] = "waiting"
         return t
-    if not review_minutes or status == "completed":
+    # The moment the clock would have started had it never paused: elapsed = now - started_at.
+    t["started_at"] = (created + timedelta(seconds=paused)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    t["running"] = True
+    if not review_minutes:
+        t["state"] = "running"
         return t
-    paused = paused_seconds(status_events, until=now)
-    due = created + timedelta(minutes=review_minutes, seconds=paused)
-    secs = (due - now).total_seconds()
-    t["due_at"] = due.strftime("%Y-%m-%dT%H:%M:%SZ")
-    t["due_hhmm"] = due.strftime("%H:%M")
-    t["total_seconds"] = review_minutes * 60
-    if secs >= 0:
-        t.update(state="due", seconds_left=secs, minutes_left=max(1, math.ceil(secs / 60)))
-    else:
-        t.update(state="overdue", minutes_over=max(1, math.floor(-secs / 60)))
+    limit = review_minutes * 60
+    t["limit_seconds"] = limit
+    t["state"] = "due" if elapsed <= limit else "overdue"
     return t
 
 

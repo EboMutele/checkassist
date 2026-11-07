@@ -34,10 +34,9 @@
           {% set t = timings[s.id] %}
           <span class="doc-side">
             {{ status_pill(s.status) }}
-            <span class="muted small" {% if t.state == 'due' %}data-countdown="{{ t.due_at }}" data-mode="inline" data-over-text="Almost there, we'll let you know"{% endif %}>
-              {%- if t.state == 'due' %}Expected in about {{ t.minutes_left|minutes }}
-              {%- elif t.state == 'overdue' %}Almost there, we'll let you know
-              {%- elif t.state == 'waiting' %}Paused until you reply
+            <span class="muted small doc-clock" {% if t.running %}data-countup="{{ t.started_at }}" data-suffix=" since upload"{% endif %}>
+              {%- if t.running %}{{ t.elapsed_seconds|clock }} since upload
+              {%- elif t.state == 'waiting' %}Paused at {{ t.elapsed_seconds|clock }} until you reply
               {%- elif t.state == 'done' %}Reviewed in {{ t.took|minutes }}
               {%- else %}Updated {{ s.updated_at|time_ago }}{% endif -%}
             </span>

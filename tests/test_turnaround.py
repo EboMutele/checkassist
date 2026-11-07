@@ -16,12 +16,14 @@ NOW = datetime(2026, 11, 7, 12, 0, tzinfo=timezone.utc)
 def test_timing_states():
     created = _ts(NOW - timedelta(minutes=8))
     t = timing(created, "in_review", None, 20, now=NOW)
-    assert t["state"] == "due" and t["minutes_left"] == 12 and t["due_at"] == _ts(NOW + timedelta(minutes=12))
+    assert t["state"] == "due" and t["running"] and t["elapsed_seconds"] == 8 * 60
+    assert t["started_at"] == created  # nothing paused, so the stopwatch starts at upload
 
     late = timing(_ts(NOW - timedelta(minutes=27)), "submitted", None, 20, now=NOW)
-    assert late["state"] == "overdue" and late["minutes_over"] == 7
+    assert late["state"] == "overdue" and late["elapsed_seconds"] == 27 * 60
 
-    assert timing(created, "needs_info", None, 20, now=NOW)["state"] == "waiting"
+    waiting = timing(created, "needs_info", None, 20, now=NOW)
+    assert waiting["state"] == "waiting" and not waiting["running"]
 
     done = timing(_ts(NOW - timedelta(minutes=30)), "completed", _ts(NOW - timedelta(minutes=13)), 20, now=NOW)
     assert done["state"] == "done" and done["took"] == 17 and done["on_time"] is True
@@ -29,7 +31,13 @@ def test_timing_states():
     slow = timing(_ts(NOW - timedelta(minutes=60)), "completed", _ts(NOW), 20, now=NOW)
     assert slow["took"] == 60 and slow["on_time"] is False
 
-    assert timing(created, "in_review", None, 0, now=NOW)["state"] is None  # promise switched off
+    off = timing(created, "in_review", None, 0, now=NOW)  # no promise: still a stopwatch
+    assert off["state"] == "running" and off["running"] and "limit_seconds" not in off
+
+
+def test_clock_format():
+    from app.helpers import clock
+    assert [clock(0), clock(59.9), clock(61), clock(20 * 60), clock(3725)] == ["0:00", "0:59", "1:01", "20:00", "1:02:05"]
 
 
 def _set_created(app, sid, minutes_ago):
@@ -51,14 +59,28 @@ def test_promise_can_be_switched_off(tmp_path):
     assert "20 minutes" not in page and "Notes back in" not in page
 
 
-def test_customer_sees_expected_time_then_overdue_message(app, alice):
+REMAINING_TIME_PHRASES = ["Expected by", "Expected in", " left<", " left ", "minutes left", "Almost there",
+                          "longer than usual", "in about"]
+
+
+def _no_remaining_time(html):
+    main = html.split('<main id="main"', 1)[1].split("</main>", 1)[0]  # page body, not nav/footer
+    found = [p for p in REMAINING_TIME_PHRASES if p in main]
+    assert not found, f"customer page mentions remaining time: {found}"
+
+
+def test_customer_sees_a_stopwatch_never_time_remaining(app, alice):
     sid = sub_id_from(upload(alice))
     page = alice.get(f"/submissions/{sid}").get_data(as_text=True)
-    assert "Expected by" in page and "in about 20 minutes" in page and "data-watch-status" in page
-    assert 'role="timer"' in page and (">20:00<" in page or ">19:59<" in page)
-    _set_created(app, sid, 26)
+    assert 'role="timer"' in page and "since upload" in page and "data-watch-status" in page
+    assert ">0:00<" in page or ">0:01<" in page
+    _no_remaining_time(page)
+    _no_remaining_time(alice.get("/dashboard").get_data(as_text=True))
+    _set_created(app, sid, 26)  # past the promise: the customer sees the same stopwatch, nothing else
     page = alice.get(f"/submissions/{sid}").get_data(as_text=True)
-    assert "taking a little longer than usual" in page and "Expected by" not in page
+    assert ">26:00<" in page or ">26:01<" in page
+    _no_remaining_time(page)
+    _no_remaining_time(alice.get("/dashboard").get_data(as_text=True))
 
 
 def test_admin_queue_flags_overdue_and_counts_it(app, alice, admin):
@@ -67,10 +89,12 @@ def test_admin_queue_flags_overdue_and_counts_it(app, alice, admin):
     _set_created(app, late, 31)
     page = admin.get("/admin/").get_data(as_text=True)
     assert "<title>(1 overdue) Review queue" in page
-    assert "11 min overdue" in page and "20 min left" in page
+    assert ">31:00<" in page or ">31:01<" in page             # elapsed, not remaining
+    assert 'class="row-late"' in page and "due due-late" in page
+    assert " left" not in page.split("<tbody>", 1)[1]           # reviewers don't get a countdown either
     assert page.index("Old one") < page.index("Fresh one")  # oldest first
     detail = admin.get(f"/admin/submissions/{late}").get_data(as_text=True)
-    assert "11 min overdue" in detail
+    assert "due due-late" in detail
     assert on_time  # silence unused warning
 
 
@@ -105,8 +129,10 @@ def test_needs_info_pauses_customer_countdown(alice, admin):
     sid = sub_id_from(upload(alice))
     admin.post(f"/admin/submissions/{sid}/message", {"body": "Which style?", "visibility": "customer", "request_info": "1"})
     page = alice.get(f"/submissions/{sid}").get_data(as_text=True)
-    assert "Expected by" not in page and "Your reviewer has a question" in page
-    assert "Paused, waiting on customer" in admin.get("/admin/").get_data(as_text=True)
+    assert "Your reviewer has a question" in page and "timer is paused until you reply" in page
+    assert 'data-countup="' not in page  # no ticking while paused
+    _no_remaining_time(page)
+    assert "Paused at 0:0" in admin.get("/admin/").get_data(as_text=True)
 
 
 # ---- pause while waiting on the customer, live timer, status polling ---------------
@@ -123,11 +149,12 @@ def test_paused_seconds_counts_only_needs_info_spans():
     assert paused_seconds(ev, until=NOW - timedelta(minutes=20)) == 20 * 60  # capped
 
 
-def test_due_time_moves_out_by_the_pause():
+def test_pause_is_left_out_of_elapsed_time():
     created = _ts(NOW - timedelta(minutes=45))
     ev = [(_ts(NOW - timedelta(minutes=40)), "needs_info"), (_ts(NOW - timedelta(minutes=10)), "in_review")]
     t = timing(created, "in_review", None, 20, now=NOW, status_events=ev)
-    assert t["state"] == "due" and t["minutes_left"] == 5  # 45 elapsed - 30 paused = 15 active
+    assert t["state"] == "due" and t["elapsed_seconds"] == 15 * 60  # 45 since upload - 30 paused
+    assert t["started_at"] == _ts(NOW - timedelta(minutes=15))     # the browser counts up from here
     done = timing(created, "completed", _ts(NOW), 20, now=NOW, status_events=ev)
     assert done["took"] == 15 and done["on_time"]
 
@@ -142,8 +169,7 @@ def test_reply_after_long_wait_does_not_make_it_overdue(app, alice, admin):
                 (_ts(datetime.now(timezone.utc) - timedelta(minutes=45)), sid))
     alice.post(f"/submissions/{sid}/reply", {"body": "APA please"})
     page = alice.get(f"/submissions/{sid}").get_data(as_text=True)
-    assert 'role="timer"' in page and 'class="eta">This one is taking' not in page  # 5 active min used
-    assert ">15:00<" in page or ">14:59<" in page
+    assert 'role="timer"' in page and (">5:00<" in page or ">5:01<" in page)  # 50 since upload - 45 paused
     assert "(1 overdue)" not in admin.get("/admin/").get_data(as_text=True)
 
 
@@ -165,8 +191,9 @@ def test_status_endpoint_is_private_and_current(alice, bob, admin, client):
     assert alice.get(f"/submissions/{sid}/status.json").json["status"] == "in_review"
 
 
-def test_queue_and_dashboard_carry_live_countdowns(alice, admin):
-    sid = sub_id_from(upload(alice))
-    assert 'data-mode="reviewer"' in admin.get("/admin/").get_data(as_text=True)
-    assert 'data-mode="inline"' in alice.get("/dashboard").get_data(as_text=True)
-    assert sid
+def test_queue_and_dashboard_carry_live_stopwatches(alice, admin):
+    sub_id_from(upload(alice))
+    queue = admin.get("/admin/").get_data(as_text=True)
+    assert "data-countup=" in queue and 'data-limit="1200"' in queue and "data-countdown" not in queue
+    dash = alice.get("/dashboard").get_data(as_text=True)
+    assert "data-countup=" in dash and 'data-suffix=" since upload"' in dash

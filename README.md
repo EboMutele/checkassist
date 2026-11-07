@@ -54,13 +54,15 @@ Any host that runs Python with a **persistent disk** works (Render, Railway, Fly
 5. For email, set the `SMTP_*` values (any provider: Postmark, SES, Resend, Mailgun…). Without them, notifications are in-app only.
 6. For texts, set `SMS_PROVIDER` to `africastalking` or `twilio` plus that provider's keys (see `.env.example`), and `DEFAULT_COUNTRY_CODE` if customers will type local numbers. Test with `AT_USERNAME=sandbox` first. Without a provider, sending results still works and the timeline notes that no text went out.
 
-## The 20-minute promise
+## Review time and the timer
 
-`REVIEW_MINUTES` (default 20) is measured from upload to the first time results are sent. Customers see an expected-by time in their own time zone; past it, they see a "taking a little longer" note instead of a countdown. While a reviewer is waiting on the customer's reply, the customer's countdown is hidden. Reviewers see minutes left or overdue on every open document.
+**Stopwatch, never a countdown.** After uploading, customers see a timer counting up from 0:00: how long their review has taken so far. It's on the document page (with a ring that sweeps once a minute), in the browser tab title, and on their dashboard. Customers are never shown time remaining, an expected-by time or a deadline; when feedback is sent they see how long it took ("3 minutes after you uploaded"). Timers use the server's clock, so a phone set to the wrong time still shows the right figure.
 
-**Live timer.** After uploading, customers see a ring timer counting down to the promise, also shown in the browser tab title, and their dashboard and the reviewers' queue count down second by second. Timers use the server's clock, so a phone set to the wrong time still shows the right countdown. At zero the timer is replaced by an "almost there" note rather than counting into negative time. The open document page checks every 15 seconds for changes (picked up, question asked, feedback sent) and refreshes itself; if the customer is typing, it shows a banner instead so nothing is lost.
+**The open page keeps itself current.** It checks every 15 seconds for changes (picked up, question asked, feedback sent) and refreshes; if the customer is typing, it shows a banner instead so nothing is lost.
 
-**Fair clock.** Time spent waiting for the customer to answer a reviewer's question doesn't count, for the customer's timer, the reviewer's due time, or the on-time stats.
+**Fair clock.** While a reviewer waits for the customer to answer a question, the timer pauses (customers see it frozen with "paused"), and that time doesn't count toward any figure.
+
+**`REVIEW_MINUTES` (default 20) is for reviewers only.** In the queue and workspace the same count-up time turns amber in the last 5 minutes and red past the target, and the queue header shows the overdue count and 7-day on-time rate. The homepage's "about 20 minutes" line also comes from this setting; set it to 0 to hide that line and the reviewer highlighting.
 
 ## Where integrations plug in
 

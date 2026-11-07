@@ -33,7 +33,7 @@
 {% if rows %}
   <table class="queue">
     <thead>
-      <tr><th scope="col">Document</th><th scope="col">Customer</th><th scope="col">Status</th><th scope="col">Reviewer</th><th scope="col">Received</th><th scope="col">Time</th></tr>
+      <tr><th scope="col">Document</th><th scope="col">Customer</th><th scope="col">Status</th><th scope="col">Reviewer</th><th scope="col">Received</th><th scope="col">Time taken</th></tr>
     </thead>
     <tbody>
       {% for r in rows %}
@@ -47,7 +47,7 @@
           <td data-label="Status">{{ status_pill(r.status) }}</td>
           <td data-label="Reviewer">{{ r.assignee_name or 'Unassigned' }}</td>
           <td data-label="Received"><time datetime="{{ r.created_at }}" title="{{ r.created_at|human_date }}">{{ r.created_at|time_ago }}</time></td>
-          <td data-label="Time">{{ due(t) }}</td>
+          <td data-label="Time taken">{{ due(t) }}</td>
         </tr>
       {% endfor %}
     </tbody>
