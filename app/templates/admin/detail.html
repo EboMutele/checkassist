@@ -29,6 +29,18 @@
     <section aria-labelledby="orig-title">
       <h2 id="orig-title">Original file</h2>
       <ul class="files">{% for f in originals %}{{ file_row(f, show_preview=true) }}{% endfor %}</ul>
+      <div class="checks-line">
+        <p class="muted small">
+          {{ '{:,}'.format(sub.words) ~ ' words' if sub.words else 'Word count unavailable for this format' }},
+          {% if sub.checks_spent %}used {{ sub.checks_spent }} {{ 'check' if sub.checks_spent == 1 else 'checks' }}{% if sub.checks_refunded %}, refunded{% endif %}{% else %}no checks used{% endif %}
+        </p>
+        {% if sub.checks_spent and not sub.checks_refunded %}
+          <form method="post" action="{{ url_for('admin.refund_checks', sub_id=sub.id) }}"
+                data-confirm="Give {{ sub.checks_spent }} {{ 'check' if sub.checks_spent == 1 else 'checks' }} back to {{ sub.user_name }}?">
+            {{ csrf() }}<button type="submit" class="btn btn-small btn-quiet">Refund {{ sub.checks_spent }} {{ 'check' if sub.checks_spent == 1 else 'checks' }}</button>
+          </form>
+        {% endif %}
+      </div>
     </section>
 
     <section aria-labelledby="preview-title">

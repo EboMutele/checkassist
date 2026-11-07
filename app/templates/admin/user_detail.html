@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros.html" import status_pill with context %}
+{% from "macros.html" import status_pill, csrf with context %}
 {% block title %}{{ user.name }}{% endblock %}
 {% block content %}
 <p class="crumbs"><a href="{{ url_for('admin.users') }}">Users</a></p>
@@ -17,7 +17,38 @@
   <div><dt>Joined</dt><dd>{{ user.created_at|human_date }}</dd></div>
   <div><dt>Last login</dt><dd>{{ user.last_login_at|human_date }}</dd></div>
   <div><dt>Documents</dt><dd>{{ subs|length }}</dd></div>
+  {% if user.role == 'user' %}
+    <div><dt>Checks</dt><dd>{{ balance }}</dd></div>
+    <div><dt>Monthly plan</dt><dd>{{ subscription.status|replace('-', ' ')|capitalize if subscription else 'None' }}</dd></div>
+  {% endif %}
 </dl>
+
+{% if user.role == 'user' %}
+<section class="panel-block admin-checks" aria-labelledby="checks-title">
+  <h2 id="checks-title">Checks</h2>
+  <form method="post" action="{{ url_for('admin.adjust_checks', user_id=user.id) }}" class="adjust-form">
+    {{ csrf() }}
+    <label>Change<input name="change" type="number" min="-1000" max="1000" step="1" required placeholder="+5 or -2"></label>
+    <label>Reason (shown to the customer)<input name="reason" required maxlength="120" placeholder="e.g. Paid by M-Pesa, ref QJK3…"></label>
+    <button type="submit" class="btn btn-primary">Apply</button>
+  </form>
+  {% if ledger %}
+    <table class="history admin-ledger">
+      <thead><tr><th scope="col">Date</th><th scope="col">What</th><th scope="col">By</th><th scope="col" class="num">Checks</th></tr></thead>
+      <tbody>
+        {% for h in ledger %}
+          <tr>
+            <td class="when">{{ h.created_at|human_date }}</td>
+            <td>{% if h.submission_id %}<a href="{{ url_for('admin.submission', sub_id=h.submission_id) }}">{{ h.reason }}</a>{% else %}{{ h.reason }}{% endif %}</td>
+            <td>{{ h.actor_name or ('Paystack' if h.payment_id else 'Customer') }}</td>
+            <td class="num {{ 'plus' if h.change > 0 else 'minus' }}">{{ '+' if h.change > 0 }}{{ h.change }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+</section>
+{% endif %}
 
 <h2>Documents</h2>
 {% if subs %}

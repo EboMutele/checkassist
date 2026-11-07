@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Payments{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>Payments</h1>
+    <p class="muted queue-stats">
+      {% for t in totals %}<span>{{ t.n }} paid in the last 30 days, {{ '{:,.2f}'.format(t.total / 100) }} {{ t.currency }}</span>{% else %}<span>No payments in the last 30 days</span>{% endfor %}
+    </p>
+  </div>
+</header>
+
+{% if not ready %}
+  <p class="callout callout-warn">Paystack isn't connected: set PAYSTACK_SECRET_KEY. Until then customers can't buy checks, but you can add checks from a customer's page.</p>
+{% elif not monthly_ready %}
+  <p class="callout callout-warn">The monthly plan isn't on sale yet: run <code>flask --app wsgi paystack-create-plan</code> and set PAYSTACK_MONTHLY_PLAN_CODE.</p>
+{% endif %}
+
+{% if rows %}
+  <table class="queue">
+    <thead><tr><th scope="col">Customer</th><th scope="col">Plan</th><th scope="col">Amount</th><th scope="col">Status</th><th scope="col">Reference</th><th scope="col">Date</th></tr></thead>
+    <tbody>
+      {% for p in rows %}
+        <tr>
+          <td data-label="Customer">{% if p.user_id %}<a href="{{ url_for('admin.user_detail', user_id=p.user_id) }}">{{ p.user_name }}</a><span class="muted small">{{ p.user_email }}</span>{% else %}—{% endif %}</td>
+          <td data-label="Plan">{{ plans[p.plan_id].name if p.plan_id in plans else p.plan_id }}{% if p.kind == 'renewal' %} (renewal){% endif %}</td>
+          <td data-label="Amount">{{ '{:,.2f}'.format(p.amount / 100) }} {{ p.currency }}{% if p.channel %}<span class="muted small">{{ p.channel|replace('_', ' ') }}</span>{% endif %}</td>
+          <td data-label="Status"><span class="pill {{ 'pill-good' if p.status == 'paid' else ('pill-bad' if p.status == 'failed' else 'pill-neutral') }}">{{ p.status|capitalize }}</span></td>
+          <td data-label="Reference"><span class="small">{{ p.reference }}</span></td>
+          <td data-label="Date">{{ (p.paid_at or p.created_at)|human_date }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p class="empty-inline">No payments yet.</p>
+{% endif %}
+{% endblock %}

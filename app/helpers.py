@@ -228,3 +228,40 @@ def status_events_of(events):
 FIRST_SENT_SQL = (
     "(SELECT MIN(e.created_at) FROM events e WHERE e.submission_id = s.id AND e.type = 'results_sent')"
 )
+
+
+# ---- word counts for pricing --------------------------------------------------------------
+
+_RTF_CONTROL = re.compile(r"\\[a-zA-Z]+-?\d* ?|\\[^a-zA-Z]|[{}]")
+_RTF_SKIP_GROUPS = re.compile(r"\{\\\*[^{}]*\}|\{\\(?:fonttbl|colortbl|stylesheet|info|pict)[^{}]*(?:\{[^{}]*\}[^{}]*)*\}")
+
+
+def count_words(path, ext):
+    """Words in the whole document, or None when the format can't be read (old .doc, scanned PDFs)."""
+    try:
+        if ext == "txt":
+            with open(path, "rb") as f:
+                text = f.read(50 * 1024 * 1024).decode("utf-8", "replace")
+        elif ext == "docx":
+            text = _zip_xml_text(path, "word/document.xml", "</w:p>")
+        elif ext == "odt":
+            text = _zip_xml_text(path, "content.xml", "</text:p>")
+        elif ext == "rtf":
+            with open(path, "rb") as f:
+                raw = f.read(20 * 1024 * 1024).decode("latin-1", "replace")
+            text = _RTF_CONTROL.sub(" ", _RTF_SKIP_GROUPS.sub(" ", raw))
+        elif ext == "pdf":
+            try:
+                from pypdf import PdfReader
+            except ImportError:
+                return None
+            reader = PdfReader(str(path))
+            text = "\n".join((page.extract_text() or "") for page in reader.pages[:1000])
+        else:
+            return None
+    except Exception:
+        return None
+    if text is None:
+        return None
+    n = word_count(text)
+    return n or None  # 0 words usually means a scanned PDF we can't read

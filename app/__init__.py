@@ -47,6 +47,13 @@ def create_app(test_config=None):
         TWILIO_MESSAGING_SERVICE_SID=os.environ.get("TWILIO_MESSAGING_SERVICE_SID", ""),
         DEFAULT_COUNTRY_CODE=os.environ.get("DEFAULT_COUNTRY_CODE", "").strip().lstrip("+"),
         SMS_OUTBOX=None,
+        # Payments (Paystack). Without a secret key, buying is switched off and admins can grant checks.
+        PAYSTACK_SECRET_KEY=os.environ.get("PAYSTACK_SECRET_KEY", "").strip(),
+        PAYSTACK_MONTHLY_PLAN_CODE=os.environ.get("PAYSTACK_MONTHLY_PLAN_CODE", "").strip(),
+        PAYSTACK_CHANNELS=[c.strip() for c in os.environ.get("PAYSTACK_CHANNELS", "").split(",") if c.strip()],
+        CHECKS_REQUIRED=_bool("CHECKS_REQUIRED", True),
+        SIGNUP_FREE_CHECKS=max(0, int(os.environ.get("SIGNUP_FREE_CHECKS", "0"))),
+        CSRF_EXEMPT_ENDPOINTS=("billing.webhook",),
         # Promised minutes from upload to feedback. 0 hides the promise everywhere.
         REVIEW_MINUTES=max(0, int(os.environ.get("REVIEW_MINUTES", "20"))),
         SESSION_COOKIE_HTTPONLY=True,
@@ -65,11 +72,12 @@ def create_app(test_config=None):
     db.init_app(app)
     security.init_app(app)
 
-    from . import admin_views, auth, helpers, sms, user_views
+    from . import admin_views, auth, billing, helpers, sms, user_views
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(user_views.bp)
     app.register_blueprint(admin_views.bp)
+    billing.init_app(app)
 
     app.jinja_env.filters.update(
         human_date=helpers.human_date,
@@ -84,6 +92,9 @@ def create_app(test_config=None):
     @app.context_processor
     def inject_globals():
         unread = 0
+        checks_balance = None
+        if getattr(g, "user", None) and g.user["role"] == "user":
+            checks_balance = billing.balance(g.user["id"])
         if getattr(g, "user", None):
             row = db.query(
                 "SELECT COUNT(*) AS n FROM notifications WHERE user_id = ? AND is_read = 0",
@@ -100,7 +111,9 @@ def create_app(test_config=None):
             "max_upload_mb": app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
             "review_minutes": app.config["REVIEW_MINUTES"],
             "phone_cc": app.config["DEFAULT_COUNTRY_CODE"],
-            "server_now": db.utcnow(),  # lets live timers correct for a wrong device clock
+            "server_now": db.utcnow(),
+            "checks_balance": checks_balance,
+            "checks_required": app.config["CHECKS_REQUIRED"],  # lets live timers correct for a wrong device clock
         }
 
     def _error(code, title, message):

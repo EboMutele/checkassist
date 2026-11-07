@@ -8,8 +8,8 @@ from flask import (
 
 from .auth import home_for, login_required
 from .db import execute, get_db, query, utcnow
-from .helpers import FIRST_SENT_SQL, OPEN_STATUSES, load_timings, status_events_of, timing
-from . import pricing
+from .helpers import FIRST_SENT_SQL, OPEN_STATUSES, count_words, load_timings, status_events_of, timing
+from . import billing, pricing
 from .notify import notify_admins
 from .security import INLINE_PREVIEW_TYPES, validate_upload
 from .storage import get_storage
@@ -103,6 +103,10 @@ def dashboard():
     )
 
 
+def _upload_context():
+    return {"words_per_check": pricing.WORDS_PER_CHECK, "plans": pricing.plans_for_display()}
+
+
 @bp.route("/submit", methods=("GET", "POST"))
 @login_required
 def new_submission():
@@ -121,26 +125,47 @@ def new_submission():
             error = "Confirm that you have the right to share this document."
         if error:
             flash(error, "error")
-            return render_template("portal/new.html", form=form), 400
+            return render_template("portal/new.html", form=form, **_upload_context()), 400
 
+        storage = get_storage()
+        stored_name, size, sha = storage.save(upload)
+        words = count_words(storage.path(stored_name), ext)
+        needed = pricing.checks_for_words(words or 0) if current_app.config["CHECKS_REQUIRED"] else 0
         conn = get_db()
-        now = utcnow()
-        cur = conn.execute(
-            "INSERT INTO submissions (user_id, title, instructions, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-            (g.user["id"], form["title"], form["instructions"], now, now),
-        )
-        sub_id = cur.lastrowid
+        billing._immediate(conn)  # balance check and spend happen atomically
         try:
-            store_file(upload, ext, sub_id, "original", g.user["id"])
+            now = utcnow()
+            cur = conn.execute(
+                "INSERT INTO submissions (user_id, title, instructions, words, checks_spent, created_at, updated_at)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (g.user["id"], form["title"], form["instructions"], words, needed, now, now),
+            )
+            sub_id = cur.lastrowid
+            conn.execute(
+                "INSERT INTO files (submission_id, kind, original_name, stored_name, ext, size, sha256,"
+                " visible_to_user, uploaded_by, created_at) VALUES (?, 'original', ?, ?, ?, ?, ?, 1, ?, ?)",
+                (sub_id, clean_filename(upload.filename), stored_name, ext, size, sha, g.user["id"], now),
+            )
             add_event(sub_id, g.user["id"], "created")
+            if needed:
+                billing.take(conn, g.user["id"], needed, f"Review of CA-{sub_id:05d}", submission_id=sub_id)
             conn.commit()
+        except billing.NotEnoughChecks as e:
+            conn.rollback()
+            storage.delete(stored_name)
+            words_note = f"This document is {words:,} words, so it needs {e.needed} checks. " if words and e.needed > 1 else ""
+            flash(f"{words_note}You have {e.available} {'check' if e.available == 1 else 'checks'}. "
+                  "Buy more to upload it.", "error")
+            return render_template("portal/new.html", form=form, **_upload_context()), 402
         except Exception:
             conn.rollback()
+            storage.delete(stored_name)
             raise
         notify_admins(f"New document from {g.user['name']}: {form['title']}", sub_id)
-        flash("Uploaded. We'll notify you as soon as your review is ready.", "success")
+        used = f" It used {needed} {'check' if needed == 1 else 'checks'}." if needed else ""
+        flash(f"Uploaded.{used} We'll let you know as soon as your feedback is ready.", "success")
         return redirect(url_for("portal.submission", sub_id=sub_id))
-    return render_template("portal/new.html", form=form)
+    return render_template("portal/new.html", form=form, **_upload_context())
 
 
 @bp.route("/submissions/<int:sub_id>")

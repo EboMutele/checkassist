@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% from "macros.html" import rate_card, csrf with context %}
+{% block title %}Your checks{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>Your checks</h1>
+    <p class="muted">One check reads one document up to {{ '{:,}'.format(words_per_check) }} words.</p>
+  </div>
+</header>
+
+<div class="billing-top">
+  <section class="balance-card sheet" aria-labelledby="bal-title">
+    <h2 id="bal-title">Balance</h2>
+    <p class="balance-figure">{{ balance }}<span>{{ 'check' if balance == 1 else 'checks' }}</span></p>
+    {% if grants %}
+      <ul class="grant-list">
+        {% for gr in grants %}
+          <li>{{ gr.note }}: <strong>{{ gr.remaining }}</strong> left{% if gr.expires_at %}, use by <time datetime="{{ gr.expires_at }}" data-local="date">{{ gr.expires_at[:10] }}</time>{% endif %}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">Buy a check below to upload your first paper.</p>
+    {% endif %}
+    {% if balance %}<p class="sub-actions"><a class="btn btn-primary" href="{{ url_for('portal.new_submission') }}">Upload a paper</a></p>{% endif %}
+  </section>
+
+  <section class="sub-card sheet" aria-labelledby="sub-title">
+    <h2 id="sub-title">Monthly plan</h2>
+    {% if subscription %}
+      {% set st = subscription.status %}
+      <p class="sub-status">
+        {% if st == 'active' %}<span class="notice-pill">Active</span>
+        {% elif st == 'pending' %}<span class="notice-pill off">Starting</span>
+        {% elif st == 'attention' %}<span class="notice-pill warn">Payment failed</span>
+        {% elif st == 'non-renewing' %}<span class="notice-pill off">Ends this month</span>{% endif %}
+      </p>
+      <p class="muted">
+        {%- if st == 'attention' %}We couldn't charge your card for this month. Update it to keep getting checks.
+        {%- elif st == 'non-renewing' %}It won't renew. Your checks stay until they expire.
+        {%- else %}New checks arrive with each monthly payment{% if subscription.next_payment_date %}, next on <time datetime="{{ subscription.next_payment_date }}" data-local="date">{{ subscription.next_payment_date[:10] }}</time>{% endif %}. Unused checks carry over one month.{% endif -%}
+      </p>
+      {% if subscription.subscription_code %}
+        <div class="sub-actions">
+          <form method="post" action="{{ url_for('billing.update_card') }}">{{ csrf() }}<button class="btn btn-quiet" type="submit">Update card</button></form>
+          {% if st in ('active', 'attention') and subscription.email_token %}
+            <form method="post" action="{{ url_for('billing.cancel_subscription') }}" data-confirm="Cancel your monthly plan? You keep the checks you have until they expire.">
+              {{ csrf() }}<button class="btn btn-danger-quiet" type="submit">Cancel plan</button>
+            </form>
+          {% endif %}
+        </div>
+      {% endif %}
+    {% else %}
+      <p class="muted sub-status">Not subscribed. The monthly plan suits tutors and teams who send papers every week.</p>
+    {% endif %}
+  </section>
+</div>
+
+<section aria-labelledby="buy-title">
+  <h2 id="buy-title">Buy checks</h2>
+  {% if not ready %}<p class="callout callout-warn">Online payments aren't switched on yet. Contact us and we'll add checks to your account.</p>{% endif %}
+  {{ rate_card(plans) }}
+</section>
+
+<section aria-labelledby="hist-title">
+  <h2 id="hist-title">History</h2>
+  {% if history %}
+    <table class="history">
+      <thead><tr><th scope="col">Date</th><th scope="col">What</th><th scope="col" class="num">Checks</th></tr></thead>
+      <tbody>
+        {% for h in history %}
+          <tr>
+            <td class="when"><time datetime="{{ h.created_at }}" data-local="date">{{ h.created_at[:10] }}</time></td>
+            <td>{% if h.submission_id and h.change < 0 %}<a href="{{ url_for('portal.submission', sub_id=h.submission_id) }}">{{ h.reason }}</a>{% else %}{{ h.reason }}{% endif %}</td>
+            <td class="num {{ 'plus' if h.change > 0 else 'minus' }}">{{ '+' if h.change > 0 }}{{ h.change }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty-inline">Nothing yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

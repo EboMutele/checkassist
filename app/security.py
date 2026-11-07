@@ -83,7 +83,8 @@ login_throttle = LoginThrottle()
 CSP = (
     "default-src 'self'; img-src 'self' data:; "
     "style-src 'self'; font-src 'self'; "
-    "script-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
+    "script-src 'self'; form-action 'self' https://checkout.paystack.com https://paystack.com;"
+    " frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
 )
 
 
@@ -92,6 +93,8 @@ def init_app(app):
     def check_csrf():
         if not app.config.get("CSRF_ENABLED", True):
             return
+        if request.endpoint in app.config.get("CSRF_EXEMPT_ENDPOINTS", ()):
+            return  # e.g. Paystack's webhook, verified by its HMAC signature instead
         if request.method in ("POST", "PUT", "PATCH", "DELETE"):
             sent = request.form.get("csrf_token") or request.headers.get("X-CSRF-Token") or ""
             expected = session.get("_csrf") or ""

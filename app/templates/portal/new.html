@@ -1,11 +1,26 @@
 {% extends "base.html" %}
-{% from "macros.html" import csrf with context %}
+{% from "macros.html" import csrf, rate_card with context %}
 {% block title %}Upload a document{% endblock %}
 {% block content %}
 <section class="narrow">
   <h1>Upload a document</h1>
-  <p class="lede">A reviewer reads the whole thing and sends back notes. We'll email you when your feedback is ready.</p>
+  <p class="lede">A reviewer reads the whole thing and sends back notes. We'll let you know the moment your feedback is ready.</p>
+</section>
 
+{% if checks_required and not checks_balance %}
+  <section class="out-of-checks sheet narrow" aria-labelledby="out-title">
+    <h2 id="out-title">You're out of checks</h2>
+    <p class="muted">Each upload uses one check for every {{ '{:,}'.format(words_per_check) }} words. Buy one to send your paper.</p>
+  </section>
+  {{ rate_card(plans) }}
+{% else %}
+<section class="narrow">
+  {% if checks_required %}
+    <p class="upload-meter">
+      <span>You have <strong>{{ checks_balance }} {{ 'check' if checks_balance == 1 else 'checks' }}</strong>.</span>
+      <span>One check per {{ '{:,}'.format(words_per_check) }} words. <a href="{{ url_for('billing.page') }}">Buy more</a></span>
+    </p>
+  {% endif %}
   <form method="post" enctype="multipart/form-data" class="form sheet sheet-pad" data-upload-form>
     {{ csrf() }}
     <label for="title">Title</label>
@@ -17,7 +32,7 @@
              accept=".pdf,.doc,.docx,.odt,.rtf,.txt" aria-describedby="file-hint">
       <p class="dropzone-text" data-dropzone-text>Drag a file here or <span class="link-look">choose one</span></p>
     </div>
-    <p id="file-hint" class="hint">{{ allowed_label }}, up to {{ max_upload_mb }} MB.</p>
+    <p id="file-hint" class="hint">{{ allowed_label }}, up to {{ max_upload_mb }} MB. We count the words when you upload.</p>
 
     <label for="instructions">What should the reviewer focus on? <span class="muted">(optional)</span></label>
     <textarea id="instructions" name="instructions" rows="5" maxlength="5000"
@@ -31,4 +46,5 @@
     <button type="submit" class="btn btn-primary">Upload document</button>
   </form>
 </section>
+{% endif %}
 {% endblock %}

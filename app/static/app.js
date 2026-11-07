@@ -71,6 +71,7 @@
   "use strict";
   var formats = {
     time: { hour: "numeric", minute: "2-digit" },
+    date: { month: "short", day: "numeric", year: "numeric" },
     datetime: { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }
   };
   document.querySelectorAll("time[data-local]").forEach(function (el) {

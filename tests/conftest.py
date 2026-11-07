@@ -81,6 +81,11 @@ def users(app):
             "admin": create_user("admin@example.com", "Rita Reviewer", "password123", role="admin"),
             "admin2": create_user("admin2@example.com", "Sam Second", "password123", role="admin"),
         }
+        from app.billing import grant
+        from app.db import get_db
+        for who in ("alice", "bob"):
+            grant(get_db(), ids[who], 50, "admin", "Test balance")
+        get_db().commit()
     return ids
 
 

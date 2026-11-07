@@ -105,9 +105,15 @@
           </td>
           {% if not compact %}
             <td class="rate-action">
-              <a class="btn {{ 'btn-primary' if p.kind == 'monthly' else 'btn-quiet' }}" href="{{ url_for('auth.register') }}">
-                {%- if p.kind == 'single' %}Check one paper{% elif p.kind == 'monthly' %}Start monthly{% else %}Get {{ p.checks }} checks{% endif -%}
-              </a>
+              {% set label %}{% if p.kind == 'single' %}Buy 1 check{% elif p.kind == 'monthly' %}Start monthly{% else %}Buy {{ p.checks }} checks{% endif %}{% endset %}
+              {% if current_user and current_user.role == 'user' %}
+                <form method="post" action="{{ url_for('billing.checkout', plan_id=p.id) }}">
+                  {{ csrf() }}
+                  <button type="submit" class="btn {{ 'btn-primary' if p.kind == 'monthly' else 'btn-quiet' }}">{{ label }}</button>
+                </form>
+              {% else %}
+                <a class="btn {{ 'btn-primary' if p.kind == 'monthly' else 'btn-quiet' }}" href="{{ url_for('auth.register', next=url_for('billing.page')) }}">{{ label }}</a>
+              {% endif %}
             </td>
           {% endif %}
         </tr>

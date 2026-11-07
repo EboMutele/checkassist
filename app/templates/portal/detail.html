@@ -72,6 +72,13 @@
   <section aria-labelledby="files-title">
     <h2 id="files-title">What you sent</h2>
     <ul class="files">{% for f in originals %}{{ file_row(f) }}{% endfor %}</ul>
+    {% if sub.checks_spent or sub.words %}
+      <p class="muted small">
+        {%- if sub.words %}{{ '{:,}'.format(sub.words) }} words{% endif %}
+        {%- if sub.words and sub.checks_spent %}, {% endif %}
+        {%- if sub.checks_spent %}used {{ sub.checks_spent }} {{ 'check' if sub.checks_spent == 1 else 'checks' }}{% if sub.checks_refunded %} (refunded){% endif %}{% endif -%}
+      </p>
+    {% endif %}
     <h3>Your instructions</h3>
     {% if sub.instructions %}<div class="prewrap">{{ sub.instructions }}</div>{% else %}<p class="muted">No extra instructions.</p>{% endif %}
   </section>

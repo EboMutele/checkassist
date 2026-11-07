@@ -22,9 +22,12 @@
           {% if current_user.role == 'admin' %}
             <a href="{{ url_for('admin.queue') }}" {% if request.blueprint == 'admin' and request.endpoint not in ('admin.users', 'admin.user_detail') %}aria-current="page"{% endif %}>Queue</a>
             <a href="{{ url_for('admin.users') }}" {% if request.endpoint in ('admin.users', 'admin.user_detail') %}aria-current="page"{% endif %}>Users</a>
+            <a href="{{ url_for('admin.payments') }}" {% if request.endpoint == 'admin.payments' %}aria-current="page"{% endif %}>Payments</a>
           {% else %}
             <a href="{{ url_for('portal.dashboard') }}" {% if request.endpoint in ('portal.dashboard', 'portal.submission') %}aria-current="page"{% endif %}>Documents</a>
             <a href="{{ url_for('portal.new_submission') }}" {% if request.endpoint == 'portal.new_submission' %}aria-current="page"{% endif %}>Upload</a>
+            <a href="{{ url_for('billing.page') }}" {% if request.blueprint == 'billing' %}aria-current="page"{% endif %}
+               aria-label="Checks: {{ checks_balance }} left">Checks <span class="count count-quiet">{{ checks_balance }}</span></a>
           {% endif %}
           <a href="{{ url_for('portal.notifications') }}" {% if request.endpoint == 'portal.notifications' %}aria-current="page"{% endif %}
              aria-label="Notifications{% if unread_count %}, {{ unread_count }} unread{% endif %}">

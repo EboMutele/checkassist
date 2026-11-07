@@ -48,6 +48,11 @@ def _migrate(conn):
     user_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
     if "phone" not in user_cols:
         conn.execute("ALTER TABLE users ADD COLUMN phone TEXT")
+    sub_cols = {row[1] for row in conn.execute("PRAGMA table_info(submissions)")}
+    for col, ddl in (("words", "INTEGER"), ("checks_spent", "INTEGER NOT NULL DEFAULT 0"),
+                     ("checks_refunded", "INTEGER NOT NULL DEFAULT 0")):
+        if col not in sub_cols:
+            conn.execute(f"ALTER TABLE submissions ADD COLUMN {col} {ddl}")
 
 
 def init_db():

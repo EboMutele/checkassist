@@ -5,7 +5,7 @@ from functools import wraps
 from flask import Blueprint, abort, current_app, flash, g, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash
 
-from .db import create_user, execute, query, utcnow
+from .db import create_user, execute, get_db, query, utcnow
 from .security import csrf_token, login_throttle
 from .sms import normalize_phone
 
@@ -110,9 +110,16 @@ def register():
             flash(error, "error")
         else:
             uid = create_user(form["email"], form["name"], password, phone=phone)
+            free = current_app.config["SIGNUP_FREE_CHECKS"]
+            if free:
+                from .billing import ADMIN_GRANT_VALID_MONTHS, _iso, _now, add_months, grant
+                conn = get_db()
+                grant(conn, uid, free, "signup", "Welcome checks", _iso(add_months(_now(), ADMIN_GRANT_VALID_MONTHS)))
+                conn.commit()
+            next_url = _safe_next(request.args.get("next"))
             _start_session(uid)
             flash("Welcome! Upload your first document whenever you're ready.", "success")
-            return redirect(url_for("portal.dashboard"))
+            return redirect(next_url or url_for("portal.dashboard"))
     return render_template("auth/register.html", form=form)
 
 

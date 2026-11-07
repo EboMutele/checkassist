@@ -9,6 +9,7 @@ from .helpers import (
     FIRST_SENT_SQL, OPEN_STATUSES, STATUSES, extract_preview, load_timings, ref, status_events_of, timing, word_count,
 )
 from .notify import notify
+from . import billing, pricing
 from .sms import feedback_ready_text, mask_phone, send_sms
 from .security import validate_upload
 from .storage import get_storage
@@ -404,4 +405,68 @@ def user_detail(user_id):
         " WHERE s.user_id = ? ORDER BY s.created_at DESC",
         (user_id,),
     )
-    return render_template("admin/user_detail.html", user=user, subs=subs)
+    ledger = query(
+        "SELECT l.*, a.name AS actor_name FROM ledger l LEFT JOIN users a ON a.id = l.actor_id"
+        " WHERE l.user_id = ? ORDER BY l.created_at DESC, l.id DESC LIMIT 100",
+        (user_id,),
+    )
+    return render_template(
+        "admin/user_detail.html", user=user, subs=subs, ledger=ledger,
+        balance=billing.balance(user_id), subscription=billing.current_subscription(user_id),
+    )
+
+
+@bp.route("/users/<int:user_id>/checks", methods=("POST",))
+@admin_required
+def adjust_checks(user_id):
+    user = query("SELECT * FROM users WHERE id = ? AND role = 'user'", (user_id,), one=True)
+    if user is None:
+        abort(404)
+    try:
+        change = int(request.form.get("change", "0"))
+    except ValueError:
+        change = 0
+    reason = request.form.get("reason", "").strip()[:120]
+    if not change or abs(change) > 1000 or not reason:
+        flash("Enter a number of checks (not zero, up to 1,000) and a reason.", "error")
+        return redirect(url_for("admin.user_detail", user_id=user_id))
+    try:
+        billing.admin_adjust(user_id, change, reason, g.user["id"])
+    except billing.NotEnoughChecks as e:
+        flash(f"{user['name']} only has {e.available} checks, so you can't remove {-change}.", "error")
+        return redirect(url_for("admin.user_detail", user_id=user_id))
+    if change > 0:
+        notify([user_id], f"{change} {'check was' if change == 1 else 'checks were'} added to your account: {reason}")
+    flash(f"{'Added' if change > 0 else 'Removed'} {abs(change)} {'check' if abs(change) == 1 else 'checks'}.", "success")
+    return redirect(url_for("admin.user_detail", user_id=user_id))
+
+
+@bp.route("/submissions/<int:sub_id>/refund-checks", methods=("POST",))
+@admin_required
+def refund_checks(sub_id):
+    sub = get_submission_or_404(sub_id)
+    n = billing.refund_submission(sub, g.user["id"])
+    if not n:
+        flash("Nothing to refund: this upload's checks were already returned.", "info")
+        return _back(sub_id)
+    add_event(sub_id, g.user["id"], "note", f"Refunded {n} {'check' if n == 1 else 'checks'} to the customer.", internal=True)
+    get_db().commit()
+    notify([sub["user_id"]], f"We've returned {n} {'check' if n == 1 else 'checks'} for \u201c{sub['title']}\u201d to your balance.", sub_id)
+    flash(f"Refunded {n} {'check' if n == 1 else 'checks'}.", "success")
+    return _back(sub_id)
+
+
+@bp.route("/payments")
+@admin_required
+def payments():
+    rows = query(
+        "SELECT p.*, u.name AS user_name, u.email AS user_email FROM payments p LEFT JOIN users u ON u.id = p.user_id"
+        " ORDER BY p.created_at DESC, p.id DESC LIMIT 200"
+    )
+    totals = query(
+        "SELECT currency, SUM(amount) AS total, COUNT(*) AS n FROM payments WHERE status = 'paid'"
+        " AND paid_at >= strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-30 days') GROUP BY currency"
+    )
+    return render_template("admin/payments.html", rows=rows, totals=totals, plans={p.id: p for p in pricing.PLANS},
+                           ready=billing.payments_ready(),
+                           monthly_ready=bool(current_app.config["PAYSTACK_MONTHLY_PLAN_CODE"]))

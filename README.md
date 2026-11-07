@@ -70,7 +70,28 @@ Prices live in one place, `app/pricing.py`; the pricing page, homepage section a
 
 `tests/test_pricing.py` fails if an edit breaks the ladder: a bigger option must cost less per check, save at least 5 points more than the one before, and the monthly plan must be the cheapest per check.
 
-Payments aren't connected yet: the buttons lead to sign-up, and uploads are not charged. Add a payment provider (Stripe for cards, or M-Pesa through Daraja, Paystack or Flutterwave) and a check balance per account before launch.
+## Payments (Paystack)
+
+Customers buy checks on **Checks** (or from the pricing page) and pay on Paystack's checkout. Each upload spends one check per 10,000 words, counted from the file; formats we can't read (old .doc, scanned PDFs) use one check, and reviewers can refund from the document page.
+
+**Set up**
+1. In the Paystack dashboard, copy your secret key into `PAYSTACK_SECRET_KEY` (start with the test key).
+2. Set the webhook URL to `https://YOUR-SITE/billing/webhook` and the callback URL to `https://YOUR-SITE/billing/callback` (the app also sends the callback with each payment).
+3. Run `flask --app wsgi paystack-create-plan` once and set `PAYSTACK_MONTHLY_PLAN_CODE` to the code it prints.
+4. Test a pack and the monthly plan with Paystack's test cards, then switch to the live key.
+
+**How it's kept safe**
+- Checks are added only after we verify the transaction with Paystack and the amount and currency match what we charged.
+- Webhooks are accepted only with a valid `x-paystack-signature` (HMAC-SHA512 of the body with your secret key).
+- Each payment adds checks once, however often Paystack retries; renewals are recorded by transaction and invoice, and a subscription can't be credited twice within 20 days.
+- Spending and the balance check happen in one database transaction, so two uploads at once can't overspend.
+- Every change is in a ledger the customer sees on their Checks page and admins see on the user's page.
+
+**Monthly plan**: card only (renewals need a saved card). Each paid month adds 80 checks that last two months (this month plus one carried over). Customers can update their card or cancel from the Checks page; a failed renewal emails them.
+
+**Currency**: prices are in USD. Paystack Kenya charges 3.8% on international cards, 2.9% on local cards and 1.5% on M-Pesa, and M-Pesa payments are in KES. To accept M-Pesa, set `CURRENCY_CODE = "KES"` and KES prices in `app/pricing.py`, and run `paystack-create-plan` again.
+
+**Admins** can add or remove checks with a reason (for example a manual M-Pesa payment), refund an upload's checks once, and see all payments under **Payments**.
 
 ## Where integrations plug in
 
