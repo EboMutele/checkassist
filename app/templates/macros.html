@@ -84,3 +84,35 @@
 {% elif t.state == 'done' %}<span class="due {{ 'due-done' if t.on_time else 'due-slow' }}">Took {{ t.took }} min</span>
 {% else %}<span class="due">—</span>{% endif %}
 {%- endmacro %}
+
+{# Price list as a printed rate card, marked up in red pen. #}
+{% macro rate_card(plans, compact=false) -%}
+<div class="rate-card sheet {{ 'rate-card-compact' if compact }}">
+  <table class="rates">
+    <caption class="visually-hidden">Prices</caption>
+    <thead class="visually-hidden"><tr><th scope="col">Plan</th><th scope="col">Price</th><th scope="col">Per check</th>{% if not compact %}<th scope="col">Get it</th>{% endif %}</tr></thead>
+    <tbody>
+      {% for p in plans %}
+        <tr class="rate rate-{{ p.kind }}">
+          <th scope="row">
+            <span class="rate-name">{{ p.name }}</span>
+            {% if not compact %}<span class="rate-blurb">{{ p.blurb }}</span>{% endif %}
+          </th>
+          <td class="rate-price"><span class="rate-amount">{{ p.price }}</span>{% if p.period %}<span class="rate-period">{{ p.period }}</span>{% endif %}</td>
+          <td class="rate-unit">
+            <span>{{ p.per_check }} per check</span>
+            {% if p.savings %}<span class="rate-save">save {{ p.savings }}%</span>{% endif %}
+          </td>
+          {% if not compact %}
+            <td class="rate-action">
+              <a class="btn {{ 'btn-primary' if p.kind == 'monthly' else 'btn-quiet' }}" href="{{ url_for('auth.register') }}">
+                {%- if p.kind == 'single' %}Check one paper{% elif p.kind == 'monthly' %}Start monthly{% else %}Get {{ p.checks }} checks{% endif -%}
+              </a>
+            </td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{%- endmacro %}

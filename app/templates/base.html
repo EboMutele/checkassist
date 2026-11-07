@@ -37,7 +37,7 @@
           </form>
         {% else %}
           <a href="{{ url_for('portal.index') }}#how" class="nav-optional">How it works</a>
-          <a href="{{ url_for('portal.index') }}#questions" class="nav-optional">Questions</a>
+          <a href="{{ url_for('portal.pricing_page') }}" {% if request.endpoint == 'portal.pricing_page' %}aria-current="page"{% endif %}>Pricing</a>
           <a href="{{ url_for('auth.login') }}" {% if request.endpoint == 'auth.login' %}aria-current="page"{% endif %}>Log in</a>
           <a href="{{ url_for('auth.register') }}" class="btn btn-small btn-outline">Upload a paper</a>
         {% endif %}

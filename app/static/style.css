@@ -443,3 +443,55 @@ table.queue { width: 100%; border-collapse: collapse; background: var(--paper); 
 .timer.is-paused .timer-progress { stroke: var(--rule-strong); }
 .timer.is-paused .timer-time { color: var(--ink-2); }
 .timer-copy a { font-weight: 600; }
+
+/* ---------- pricing: a printed rate card, marked up in red pen ---------- */
+.pricing-head { max-width: 720px; margin: 24px 0 28px; }
+.pricing-head h1 { font-size: clamp(2.4rem, 1.8rem + 2.4vw, 3.5rem); line-height: 1.05; margin-bottom: .3em; }
+.rate-card { padding: 6px clamp(16px, 3vw, 32px); margin-bottom: 56px; }
+.rates { width: 100%; border-collapse: collapse; }
+.rates th, .rates td { padding: 22px 12px; text-align: left; vertical-align: middle; font-weight: 400; }
+.rates tr + tr th, .rates tr + tr td { border-top: 1px solid var(--rule); }
+.rates th { padding-left: 0; }
+.rate-name { display: block; font-family: var(--serif); font-size: 1.375rem; font-weight: 500; }
+.rate-blurb { display: block; color: var(--ink-2); font-size: .9375rem; max-width: 40ch; margin-top: 2px; }
+.rate-price { white-space: nowrap; }
+.rate-amount { font-family: var(--serif); font-size: 2rem; font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.rate-period { color: var(--ink-2); font-size: .9375rem; margin-left: 2px; }
+.rate-unit { color: var(--ink-2); font-size: .9375rem; white-space: nowrap; }
+.rate-unit > span:first-child { display: block; }
+.rate-save { display: inline-block; font-family: var(--hand); font-weight: 700; font-size: 1.4rem; line-height: 1.1; color: var(--red); transform: rotate(-4deg); transform-origin: left center; margin-top: 2px; }
+.rate-monthly .rate-save { padding: 0 9px 1px; border: 2px solid var(--red); border-radius: 52% 46% 55% 44% / 58% 52% 48% 44%; }
+.rate-action { text-align: right; padding-right: 0 !important; }
+.rate-action .btn { white-space: nowrap; min-width: 150px; }
+.rate-monthly th { box-shadow: inset 3px 0 0 var(--red); padding-left: 14px; }
+.rate-card-compact { margin-bottom: 0; }
+.rate-card-compact .rates th, .rate-card-compact .rates td { padding: 14px 10px; }
+.rate-card-compact .rate-name { font-size: 1.1875rem; }
+.rate-card-compact .rate-amount { font-size: 1.5rem; }
+.rate-card-compact .rate-save { font-size: 1.25rem; }
+
+.pricing-teaser { display: grid; gap: 28px; align-items: center; margin-bottom: 72px; }
+.pricing-teaser-copy p { color: var(--ink-2); max-width: 36em; }
+.pricing-explain { display: grid; gap: 28px; margin-bottom: 64px; }
+.pricing-explain p { color: var(--ink-2); max-width: 38em; }
+.pricing-facts { margin: 0; display: grid; gap: 18px; }
+.pricing-facts div { border-top: 1.5px solid var(--ink); padding-top: 10px; }
+.pricing-facts dt { font-weight: 700; margin-bottom: 2px; }
+.pricing-facts dd { margin: 0; color: var(--ink-2); }
+
+@media (max-width: 719px) {
+  .rates, .rates tbody, .rates tr { display: block; }
+  .rates tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 4px 12px; padding: 18px 0; }
+  .rates tr + tr { border-top: 1px solid var(--rule); }
+  .rates th, .rates td { padding: 0 !important; border: 0 !important; }
+  .rates th { grid-column: 1 / -1; }
+  .rate-monthly { box-shadow: inset 3px 0 0 var(--red); padding-left: 12px !important; }
+  .rate-monthly th { box-shadow: none; }
+  .rate-unit { text-align: right; }
+  .rate-action { grid-column: 1 / -1; margin-top: 10px; }
+  .rate-action .btn { width: 100%; }
+}
+@media (min-width: 960px) {
+  .pricing-teaser { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 56px; }
+  .pricing-explain { grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 64px; }
+}

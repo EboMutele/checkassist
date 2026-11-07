@@ -9,6 +9,7 @@ from flask import (
 from .auth import home_for, login_required
 from .db import execute, get_db, query, utcnow
 from .helpers import FIRST_SENT_SQL, OPEN_STATUSES, load_timings, status_events_of, timing
+from . import pricing
 from .notify import notify_admins
 from .security import INLINE_PREVIEW_TYPES, validate_upload
 from .storage import get_storage
@@ -62,7 +63,25 @@ def own_submission_or_404(sub_id):
 def index():
     if g.user:
         return redirect(home_for(g.user))
-    return render_template("index.html")
+    return render_template("index.html", plans=pricing.plans_for_display(), **_pricing_context())
+
+
+def _pricing_context():
+    return {
+        "words_per_check": pricing.WORDS_PER_CHECK,
+        "single_price": pricing.money(pricing.PLANS[0].price),
+        "lowest_per_check": pricing.lowest_per_check(),
+        "pack_months": pricing.PACK_VALID_MONTHS,
+    }
+
+
+@bp.route("/pricing")
+def pricing_page():
+    example_words = 4000
+    return render_template(
+        "pricing.html", plans=pricing.plans_for_display(), example_words=example_words,
+        example_checks=pricing.checks_for_words(example_words), **_pricing_context(),
+    )
 
 
 @bp.route("/dashboard")

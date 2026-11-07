@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Human review for essays and applications{% endblock %}
 {% block body_class %}landing{% endblock %}
+{% from "macros.html" import rate_card with context %}
 {% block content %}
 <section class="hero sheet" aria-labelledby="hero-title">
   <div class="hero-main">
@@ -91,6 +92,15 @@
   </ol>
 </section>
 
+<section class="pricing-teaser" id="pricing" aria-labelledby="price-title">
+  <div class="pricing-teaser-copy">
+    <h2 id="price-title">Pricing</h2>
+    <p>{{ single_price }} for a single check, or from {{ lowest_per_check }} a check with a pack or the monthly plan. One check covers a document up to {{ '{:,}'.format(words_per_check) }} words.</p>
+    <p><a href="{{ url_for('portal.pricing_page') }}">See pricing details</a></p>
+  </div>
+  {{ rate_card(plans, compact=true) }}
+</section>
+
 <section class="faq" id="questions" aria-labelledby="faq-title">
   <h2 id="faq-title">Questions</h2>
   <div class="faq-list">
@@ -112,7 +122,11 @@
     </details>
     <details>
       <summary>What can I upload?</summary>
-      <p>Essays, reports, dissertation chapters, personal statements and cover letters, as {{ allowed_label }} files up to {{ max_upload_mb }} MB.</p>
+      <p>Essays, reports, dissertation chapters, personal statements and cover letters, as {{ allowed_label }} files up to {{ max_upload_mb }} MB. One check covers up to {{ '{:,}'.format(words_per_check) }} words; longer documents use one more check for each extra {{ '{:,}'.format(words_per_check) }}.</p>
+    </details>
+    <details>
+      <summary>How much does it cost?</summary>
+      <p>{{ single_price }} for a single check, or from {{ lowest_per_check }} a check with a pack or the monthly plan. <a href="{{ url_for('portal.pricing_page') }}">See pricing</a>.</p>
     </details>
   </div>
 </section>

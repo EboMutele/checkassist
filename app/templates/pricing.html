@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "macros.html" import rate_card with context %}
+{% block title %}Pricing{% endblock %}
+{% block body_class %}landing{% endblock %}
+{% block content %}
+{% set monthly = plans|selectattr('kind', 'equalto', 'monthly')|first %}
+{% set pack = plans|selectattr('kind', 'equalto', 'pack')|first %}
+<header class="pricing-head">
+  <h1>Pricing</h1>
+  <p class="lede">Pay for one check at a time, or save with a pack. Every check is read by a person, start to finish.</p>
+</header>
+
+{{ rate_card(plans) }}
+
+<section class="pricing-explain" aria-labelledby="what-title">
+  <div>
+    <h2 id="what-title">What counts as a check</h2>
+    <p>One check is one document of up to {{ '{:,}'.format(words_per_check) }} words, about ten double-spaced pages. You get written notes and a marked-up copy back.</p>
+    <p>Longer documents use one more check for each extra {{ '{:,}'.format(words_per_check) }} words. A {{ '{:,}'.format(example_words) }}-word dissertation chapter uses {{ example_checks }} checks.</p>
+  </div>
+  <dl class="pricing-facts">
+    <div><dt>Packs</dt><dd>Use your checks any time in the next {{ pack_months }} months.</dd></div>
+    <div><dt>Monthly</dt><dd>{{ monthly.checks }} checks each month for {{ monthly.price }}. Anything unused carries over one month. Cancel anytime.</dd></div>
+    <div><dt>Questions from your reviewer</dt><dd>Free. Replying to your reviewer never uses a check.</dd></div>
+  </dl>
+</section>
+
+<section class="faq" aria-labelledby="pfaq-title">
+  <h2 id="pfaq-title">Questions about pricing</h2>
+  <div class="faq-list">
+    <details>
+      <summary>Which option should I pick?</summary>
+      <p>If you only need one paper read, a single check. If you'll want each draft checked this term, {{ pack.checks }} checks saves you {{ pack.savings }}% on every one. The monthly plan suits tutors, writing centres and teams that send papers every week.</p>
+    </details>
+    <details>
+      <summary>Does a revised draft cost another check?</summary>
+      <p>Yes. Each upload is read in full, so each upload uses a check.</p>
+    </details>
+    <details>
+      <summary>What if my document is longer than {{ '{:,}'.format(words_per_check) }} words?</summary>
+      <p>It uses one check for every {{ '{:,}'.format(words_per_check) }} words or part of it, so a {{ '{:,}'.format(example_words) }}-word chapter uses {{ example_checks }}.</p>
+    </details>
+  </div>
+</section>
+
+<section class="closing sheet" aria-labelledby="pclosing-title">
+  <h2 id="pclosing-title">Start with one paper.</h2>
+  <a class="btn btn-primary" href="{{ url_for('auth.register') }}">Check one paper for {{ single_price }}</a>
+</section>
+{% endblock %}
