@@ -65,3 +65,36 @@
     document.querySelectorAll("button[type=submit][disabled]").forEach(function (b) { b.disabled = false; });
   });
 })();
+
+// Show times in the viewer's own time zone (the server renders UTC as a fallback).
+(function () {
+  "use strict";
+  var formats = {
+    time: { hour: "numeric", minute: "2-digit" },
+    datetime: { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }
+  };
+  document.querySelectorAll("time[data-local]").forEach(function (el) {
+    var d = new Date(el.getAttribute("datetime"));
+    var opts = formats[el.dataset.local];
+    if (isNaN(d.getTime()) || !opts) return;
+    try { el.textContent = new Intl.DateTimeFormat(undefined, opts).format(d); } catch (e) { /* keep UTC */ }
+  });
+})();
+
+// Keep waiting pages fresh without losing anything the person is typing.
+(function () {
+  "use strict";
+  var marker = document.querySelector("[data-autorefresh]");
+  if (!marker) return;
+  var seconds = Math.max(30, parseInt(marker.dataset.autorefresh, 10) || 60);
+  function busy() {
+    var a = document.activeElement;
+    if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== "hidden") return true;
+    return Array.prototype.some.call(document.querySelectorAll("textarea, input[type=file]"), function (el) {
+      return el.value && el.value.length > 0;
+    });
+  }
+  setInterval(function () {
+    if (document.visibilityState === "visible" && !busy()) window.location.reload();
+  }, seconds * 1000);
+})();

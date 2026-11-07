@@ -5,16 +5,17 @@ Customers upload documents. Your reviewers read them and send back written feedb
 ## What's in it
 
 **Customers**
-- Create an account, upload a PDF, Word (.doc/.docx), ODT, RTF or TXT file (up to 25 MB) with instructions
+- Create an account (name, email, mobile number), upload a PDF, Word (.doc/.docx), ODT, RTF or TXT file (up to 25 MB) with instructions
 - Track progress (Submitted → In review → Feedback ready) and answer reviewer questions
-- Read feedback and download reviewed files; in-app and email notifications
+- See when to expect feedback (20 minutes by default), then read it and download reviewed files
+- Get a text and an email the moment feedback is sent; update their mobile number under Account
 
 **Admins / reviewers** (`/admin`)
-- Review queue with tabs (open, new, in review, waiting on customer, mine, completed), search by title, customer or reference (`CA-00012`), and turnaround stats
+- Review queue with tabs, search by title, customer or reference (`CA-00012`), a time-left/overdue column, overdue count in the tab title, and on-time rate for the last 7 days. Refreshes itself every minute
 - Review workspace: customer instructions, original download, in-page text preview (DOCX, ODT, PDF, TXT), assign/claim, status
 - **Send results**: written feedback plus reviewed files. Drafts stay hidden from the customer until sent, and sending emails them
 - Messages to the customer, or internal notes they never see; "mark as waiting on customer" for questions
-- Users list and per-user history
+- Users list (searchable by phone) and per-user history; every text's outcome is logged on the submission timeline for reviewers
 
 **Built in:** password hashing, CSRF protection, login throttling, session rotation, file-type checks by content (not just extension), files stored outside the web root under random names, owner/admin-only downloads, security headers.
 
@@ -46,11 +47,16 @@ The suite covers auth, CSRF, access control between customers, upload validation
 
 Any host that runs Python with a **persistent disk** works (Render, Railway, Fly.io, a VPS). SQLite and uploads both live on that disk.
 
-1. Set `APP_ENV=production`, a long random `SECRET_KEY`, `BASE_URL`, and `SESSION_COOKIE_SECURE=1`. Optionally set `TURNAROUND_TEXT` (e.g. `within 2 working days`) to show a turnaround promise on the homepage.
+1. Set `APP_ENV=production`, a long random `SECRET_KEY`, `BASE_URL`, and `SESSION_COOKIE_SECURE=1`. Set `REVIEW_MINUTES` if your promise differs from 20 minutes.
 2. Point `DATABASE_PATH` and `UPLOAD_DIR` at the persistent disk (the Dockerfile uses `/data`).
 3. Start command: see `Procfile` (gunicorn). Or `docker build -t checkassist . && docker run -p 8000:8000 -v checkassist-data:/data --env-file .env checkassist`.
 4. Run `flask --app wsgi create-admin` once on the server.
 5. For email, set the `SMTP_*` values (any provider: Postmark, SES, Resend, Mailgun…). Without them, notifications are in-app only.
+6. For texts, set `SMS_PROVIDER` to `africastalking` or `twilio` plus that provider's keys (see `.env.example`), and `DEFAULT_COUNTRY_CODE` if customers will type local numbers. Test with `AT_USERNAME=sandbox` first. Without a provider, sending results still works and the timeline notes that no text went out.
+
+## The 20-minute promise
+
+`REVIEW_MINUTES` (default 20) is measured from upload to the first time results are sent. Customers see an expected-by time in their own time zone; past it, they see a "taking a little longer" note instead of a countdown. While a reviewer is waiting on the customer's reply, the customer's countdown is hidden. Reviewers see minutes left or overdue on every open document.
 
 ## Where integrations plug in
 
@@ -58,11 +64,12 @@ Any host that runs Python with a **persistent disk** works (Render, Railway, Fly
 |---|---|
 | Cloud file storage (S3, R2) | `app/storage.py`: add a class with `save`, `path`/streaming, `delete` |
 | Email provider API, Slack, WhatsApp, webhooks | `app/notify.py`: every notification already flows through `notify()` |
+| Another SMS gateway | `app/sms.py`: add a function to `PROVIDERS` |
 | Payments before review | gate `portal.new_submission` in `app/user_views.py` |
 | Postgres | `app/db.py` + `schema.sql` (queries are plain SQL) |
 
 ## Before launch
 
-- Decide the copy that's yours to make: turnaround promise (`TURNAROUND_TEXT`), pricing, terms of service and privacy policy (you're storing people's documents). The homepage's privacy promises must stay true if you add integrations.
+- Decide the copy that's yours to make: pricing, terms of service and privacy policy (you're storing people's documents). The homepage's privacy promises must stay true if you add integrations.
 - Decide how long you keep files, then add a cleanup job.
 - Back up the `/data` disk.

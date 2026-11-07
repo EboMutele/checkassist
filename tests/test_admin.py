@@ -65,7 +65,9 @@ def test_draft_is_hidden_until_sent_then_customer_gets_results(app, alice, admin
     assert "tighten the opening" not in page and "cover-letter-marked.pdf" not in page
     result = _files(app, sid, "result")[0]
     assert alice.get(f"/files/{result['id']}").status_code == 404
-    assert outbox == []
+    to_alice = lambda: [m for m in outbox if m["to"] == "alice@example.com"]  # noqa: E731
+    assert to_alice() == []
+    assert {m["to"] for m in outbox} == {"admin@example.com", "admin2@example.com"}  # upload alerts
 
     admin.post(f"/admin/submissions/{sid}/results", {"action": "send", "feedback": "Lead with your strongest project."})
 
@@ -74,8 +76,8 @@ def test_draft_is_hidden_until_sent_then_customer_gets_results(app, alice, admin
     assert "cover-letter-marked.pdf" in page and "Completed" in page
     r = alice.get(f"/files/{result['id']}")
     assert r.status_code == 200 and r.data == PDF_BYTES
-    assert len(outbox) == 1
-    mail = outbox[0]
+    assert len(to_alice()) == 1
+    mail = to_alice()[0]
     assert mail["to"] == "alice@example.com" and "feedback is ready" in mail["subject"].lower()
     assert f"https://example.test/submissions/{sid}" in mail["body"]
 

@@ -1,0 +1,10 @@
+<label for="phone">Mobile number</label>
+<input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="40"
+       {% if not (current_user and current_user.role == 'admin') %}required{% endif %}
+       value="{{ form.phone }}" placeholder="{{ '0712 345 678' if phone_cc == '254' else ('+' ~ phone_cc ~ ' …' if phone_cc else '+ country code and number') }}"
+       aria-describedby="phone-hint">
+<p id="phone-hint" class="hint">
+  {%- if current_user and current_user.role == 'admin' %}Optional for reviewers.
+  {%- else %}We'll text you when your feedback is ready. Nothing else.{% endif %}
+  {%- if not phone_cc %} Start with + and your country code.{% endif -%}
+</p>

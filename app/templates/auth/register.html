@@ -11,6 +11,7 @@
     <input id="name" name="name" autocomplete="name" required maxlength="100" value="{{ form.name }}">
     <label for="email">Email</label>
     <input id="email" name="email" type="email" autocomplete="email" required value="{{ form.email }}">
+    {% include "auth/_phone_field.html" %}
     <label for="password">Password</label>
     <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required aria-describedby="pw-hint">
     <p id="pw-hint" class="hint">At least 8 characters.</p>

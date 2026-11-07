@@ -5,7 +5,7 @@
 <section class="hero sheet" aria-labelledby="hero-title">
   <div class="hero-main">
     <h1 id="hero-title">Check <span class="edit"><del aria-hidden="true">you're</del><ins>your</ins></span> paper before you hand it in.</h1>
-    <p class="lede">A real reviewer reads every page, flags missing citations and weak arguments, and sends back clear notes and a marked-up copy.</p>
+    <p class="lede">A real reviewer reads every page, flags missing citations and weak arguments, and sends back clear notes and a marked-up copy{% if review_minutes %} in about {{ review_minutes|minutes }}{% endif %}.</p>
 
     <a class="hero-upload" href="{{ url_for('auth.register') }}">
       <span class="hero-upload-box">
@@ -17,6 +17,7 @@
     <p class="hint">You'll create an account first, so only you can see your feedback.</p>
 
     <ul class="promises">
+      {% if review_minutes %}<li>Notes back in about {{ review_minutes }} minutes</li>{% endif %}
       <li>Read by a person, not software</li>
       <li>Never added to any database</li>
       <li>Only you and your reviewer can open it</li>
@@ -85,7 +86,7 @@
     </li>
     <li>
       <h3>Get your notes and marked-up copy</h3>
-      <p>We email you the moment they're ready. Reply to your reviewer if anything needs explaining.</p>
+      <p>{% if review_minutes %}Usually within {{ review_minutes|minutes }}. {% endif %}We text and email you the moment they're ready. Reply to your reviewer if anything needs explaining.</p>
     </li>
   </ol>
 </section>
@@ -107,7 +108,7 @@
     </details>
     <details>
       <summary>How long does a review take?</summary>
-      <p>{% if turnaround %}Most reviews are done {{ turnaround }}. {% endif %}Papers are reviewed in the order they arrive, and we email you as soon as your feedback is ready.</p>
+      <p>{% if review_minutes %}About {{ review_minutes|minutes }} from upload for most papers. Your dashboard shows the time to expect it, and {% else %}Papers are reviewed in the order they arrive, and {% endif %}we text and email you as soon as your feedback is ready.</p>
     </details>
     <details>
       <summary>What can I upload?</summary>

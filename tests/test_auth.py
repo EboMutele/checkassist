@@ -3,7 +3,7 @@ from conftest import Session
 
 def test_register_logs_in_and_lands_on_dashboard(app):
     s = Session(app)
-    r = s.post("/register", {"name": "Nia", "email": "NIA@example.com", "password": "longenough", "confirm": "longenough"})
+    r = s.post("/register", {"name": "Nia", "email": "NIA@example.com", "phone": "+254 712 000 111", "password": "longenough", "confirm": "longenough"})
     assert r.status_code == 302 and r.headers["Location"].endswith("/dashboard")
     page = s.get("/dashboard").get_data(as_text=True)
     assert "Upload your first document" in page
@@ -11,11 +11,11 @@ def test_register_logs_in_and_lands_on_dashboard(app):
 
 def test_register_rejects_duplicates_short_passwords_and_mismatch(app, users):
     s = Session(app)
-    r = s.post("/register", {"name": "A", "email": "alice@example.com", "password": "password123", "confirm": "password123"})
+    r = s.post("/register", {"name": "A", "email": "alice@example.com", "phone": "+447700900123", "password": "password123", "confirm": "password123"})
     assert "already exists" in r.get_data(as_text=True)
-    r = s.post("/register", {"name": "A", "email": "new@example.com", "password": "short", "confirm": "short"})
+    r = s.post("/register", {"name": "A", "email": "new@example.com", "phone": "+447700900123", "password": "short", "confirm": "short"})
     assert "at least 8 characters" in r.get_data(as_text=True)
-    r = s.post("/register", {"name": "A", "email": "new@example.com", "password": "password123", "confirm": "different1"})
+    r = s.post("/register", {"name": "A", "email": "new@example.com", "phone": "+447700900123", "password": "password123", "confirm": "different1"})
     assert "don&#39;t match" in r.get_data(as_text=True)
 
 

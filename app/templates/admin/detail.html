@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros.html" import status_pill, csrf, file_row, timeline with context %}
+{% from "macros.html" import status_pill, csrf, file_row, timeline, due with context %}
 {% block title %}{{ sub.title }}{% endblock %}
 {% block body_class %}is-wide{% endblock %}
 {% block content %}
@@ -13,7 +13,10 @@
       received {{ sub.created_at|human_date }}
     </p>
   </div>
-  {{ status_pill(sub.status) }}
+  <div class="head-status">
+    {{ status_pill(sub.status) }}
+    {% if t.state %}{{ due(t) }}{% endif %}
+  </div>
 </header>
 
 <div class="workspace">

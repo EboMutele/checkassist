@@ -1,15 +1,17 @@
 {% extends "base.html" %}
-{% from "macros.html" import status_pill, pager with context %}
-{% block title %}Review queue{% endblock %}
+{% from "macros.html" import status_pill, pager, due with context %}
+{% block title %}{% if stats.overdue %}({{ stats.overdue }} overdue) {% endif %}Review queue{% endblock %}
 {% block content %}
+<div data-autorefresh="60" hidden></div>
 <header class="page-head">
   <div>
     <h1>Review queue</h1>
     <p class="muted queue-stats">
       <span>{{ counts.open }} open</span>
-      {% if stats.oldest_open %}<span>oldest waiting since {{ stats.oldest_open|time_ago }}</span>{% endif %}
-      <span>{{ stats.done_7d }} sent in the last 7 days</span>
-      {% if stats.avg_hours_30d is not none %}{% set h = stats.avg_hours_30d %}<span>average turnaround {{ ('%d min'|format(h * 60)) if h < 1 else ('%.1f h'|format(h)) }}</span>{% endif %}
+      {% if stats.overdue %}<span class="stat-late">{{ stats.overdue }} overdue</span>{% endif %}
+      <span>{{ stats.sent_7d }} sent in the last 7 days</span>
+      {% if stats.on_time_pct is not none %}<span>{{ stats.on_time_pct }}% within {{ stats.minutes }} min</span>{% endif %}
+      {% if stats.avg_min_7d is not none %}<span>average {{ stats.avg_min_7d }} min</span>{% endif %}
     </p>
   </div>
   <form method="get" class="search" role="search">
@@ -31,11 +33,12 @@
 {% if rows %}
   <table class="queue">
     <thead>
-      <tr><th scope="col">Document</th><th scope="col">Customer</th><th scope="col">Status</th><th scope="col">Reviewer</th><th scope="col">Received</th></tr>
+      <tr><th scope="col">Document</th><th scope="col">Customer</th><th scope="col">Status</th><th scope="col">Reviewer</th><th scope="col">Received</th><th scope="col">Time</th></tr>
     </thead>
     <tbody>
       {% for r in rows %}
-        <tr>
+        {% set t = timing_for(r) %}
+        <tr class="{{ 'row-late' if t.state == 'overdue' }}">
           <td data-label="Document">
             <a class="row-link" href="{{ url_for('admin.submission', sub_id=r.id) }}">{{ r.title }}</a>
             <span class="muted small">{{ r.id|ref }}</span>
@@ -44,6 +47,7 @@
           <td data-label="Status">{{ status_pill(r.status) }}</td>
           <td data-label="Reviewer">{{ r.assignee_name or 'Unassigned' }}</td>
           <td data-label="Received"><time datetime="{{ r.created_at }}" title="{{ r.created_at|human_date }}">{{ r.created_at|time_ago }}</time></td>
+          <td data-label="Time">{{ due(t) }}</td>
         </tr>
       {% endfor %}
     </tbody>

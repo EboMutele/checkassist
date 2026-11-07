@@ -34,9 +34,21 @@ def create_app(test_config=None):
         SMTP_PASSWORD=os.environ.get("SMTP_PASSWORD", ""),
         SMTP_FROM=os.environ.get("SMTP_FROM", "CheckAssist <no-reply@example.com>"),
         SMTP_TLS=_bool("SMTP_TLS", True),
-        ADMIN_EMAIL_ALERTS=_bool("ADMIN_EMAIL_ALERTS", False),
-        # Shown on the homepage only when set, e.g. "within 2 working days".
-        TURNAROUND_TEXT=os.environ.get("TURNAROUND_TEXT", "").strip(),
+        # On by default: with a short review-time promise, reviewers need to hear about uploads at once.
+        ADMIN_EMAIL_ALERTS=_bool("ADMIN_EMAIL_ALERTS", True),
+        # Texts: see app/sms.py. DEFAULT_COUNTRY_CODE (digits, e.g. 254) lets people type local numbers.
+        SMS_PROVIDER=os.environ.get("SMS_PROVIDER", "").strip().lower(),
+        AT_USERNAME=os.environ.get("AT_USERNAME", ""),
+        AT_API_KEY=os.environ.get("AT_API_KEY", ""),
+        AT_SENDER_ID=os.environ.get("AT_SENDER_ID", ""),
+        TWILIO_ACCOUNT_SID=os.environ.get("TWILIO_ACCOUNT_SID", ""),
+        TWILIO_AUTH_TOKEN=os.environ.get("TWILIO_AUTH_TOKEN", ""),
+        TWILIO_FROM=os.environ.get("TWILIO_FROM", ""),
+        TWILIO_MESSAGING_SERVICE_SID=os.environ.get("TWILIO_MESSAGING_SERVICE_SID", ""),
+        DEFAULT_COUNTRY_CODE=os.environ.get("DEFAULT_COUNTRY_CODE", "").strip().lstrip("+"),
+        SMS_OUTBOX=None,
+        # Promised minutes from upload to feedback. 0 hides the promise everywhere.
+        REVIEW_MINUTES=max(0, int(os.environ.get("REVIEW_MINUTES", "20"))),
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=_bool("SESSION_COOKIE_SECURE", False),
@@ -53,7 +65,7 @@ def create_app(test_config=None):
     db.init_app(app)
     security.init_app(app)
 
-    from . import admin_views, auth, helpers, user_views
+    from . import admin_views, auth, helpers, sms, user_views
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(user_views.bp)
@@ -64,7 +76,10 @@ def create_app(test_config=None):
         time_ago=helpers.time_ago,
         file_size=helpers.file_size,
         ref=helpers.ref,
+        minutes=helpers.minutes_label,
+        masked=sms.mask_phone,
     )
+    app.jinja_env.globals["timing_for"] = lambda row: helpers.timing_for(row, app.config["REVIEW_MINUTES"])
 
     @app.context_processor
     def inject_globals():
@@ -83,7 +98,8 @@ def create_app(test_config=None):
             "app_name": app.config["APP_NAME"],
             "allowed_label": security.ALLOWED_LABEL,
             "max_upload_mb": app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
-            "turnaround": app.config["TURNAROUND_TEXT"],
+            "review_minutes": app.config["REVIEW_MINUTES"],
+            "phone_cc": app.config["DEFAULT_COUNTRY_CODE"],
         }
 
     def _error(code, title, message):

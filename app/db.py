@@ -43,18 +43,26 @@ def execute(sql, args=()):
     return cur.lastrowid
 
 
+def _migrate(conn):
+    """Bring databases created by older versions up to date. Each step is idempotent."""
+    user_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
+    if "phone" not in user_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN phone TEXT")
+
+
 def init_db():
     conn = get_db()
     with current_app.open_resource("schema.sql") as f:
         conn.executescript(f.read().decode("utf-8"))
+    _migrate(conn)
     conn.execute("PRAGMA journal_mode = WAL")
     conn.commit()
 
 
-def create_user(email, name, password, role="user"):
+def create_user(email, name, password, role="user", phone=None):
     return execute(
-        "INSERT INTO users (email, name, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)",
-        (email.strip().lower(), name.strip(), generate_password_hash(password), role, utcnow()),
+        "INSERT INTO users (email, name, phone, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (email.strip().lower(), name.strip(), phone, generate_password_hash(password), role, utcnow()),
     )
 
 

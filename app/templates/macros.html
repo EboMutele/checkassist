@@ -55,6 +55,7 @@
           {% elif e.type == 'assigned' %}{{ who }} set the reviewer to {{ e.body }}.
           {% elif e.type == 'file_added' %}{{ who }} attached {{ e.body }} as a draft.
           {% elif e.type == 'file_removed' %}{{ who }} removed {{ e.body }}.
+          {% elif e.type == 'sms' %}{{ e.body }}
           {% else %}{{ e.type }}{% endif %}
         </span>
         <time datetime="{{ e.created_at }}" title="{{ e.created_at|human_date }}" class="muted small">{{ e.created_at|time_ago }}</time>
@@ -72,4 +73,13 @@
   {% if has_next %}<a class="btn btn-small btn-quiet" href="{{ url_for(endpoint, page=page + 1, **kwargs) }}">Next page</a>{% endif %}
 </nav>
 {% endif %}
+{%- endmacro %}
+
+{# Review-time status for reviewers: time left, overdue, waiting, or how long it took. #}
+{% macro due(t) -%}
+{% if t.state == 'due' %}<span class="due {{ 'due-soon' if t.minutes_left <= 5 }}">{{ t.minutes_left }} min left</span>
+{% elif t.state == 'overdue' %}<span class="due due-late">{{ t.minutes_over }} min overdue</span>
+{% elif t.state == 'waiting' %}<span class="due">Waiting on customer</span>
+{% elif t.state == 'done' %}<span class="due {{ 'due-done' if t.on_time else 'due-slow' }}">Took {{ t.took }} min</span>
+{% else %}<span class="due">—</span>{% endif %}
 {%- endmacro %}

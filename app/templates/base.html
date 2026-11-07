@@ -30,6 +30,7 @@
              aria-label="Notifications{% if unread_count %}, {{ unread_count }} unread{% endif %}">
             Notifications{% if unread_count %} <span class="count">{{ unread_count }}</span>{% endif %}
           </a>
+          <a href="{{ url_for('auth.account') }}" {% if request.endpoint == 'auth.account' %}aria-current="page"{% endif %}>Account</a>
           <form method="post" action="{{ url_for('auth.logout') }}" class="nav-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="link-button">Log out</button>

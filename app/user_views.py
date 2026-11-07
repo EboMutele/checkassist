@@ -2,11 +2,11 @@
 import os
 import re
 
-from flask import Blueprint, abort, flash, g, redirect, render_template, request, send_file, url_for
+from flask import Blueprint, abort, current_app, flash, g, redirect, render_template, request, send_file, url_for
 
 from .auth import home_for, login_required
 from .db import execute, get_db, query, utcnow
-from .helpers import OPEN_STATUSES
+from .helpers import FIRST_SENT_SQL, OPEN_STATUSES, timing
 from .notify import notify_admins
 from .security import INLINE_PREVIEW_TYPES, validate_upload
 from .storage import get_storage
@@ -70,7 +70,8 @@ def dashboard():
         return redirect(url_for("admin.queue"))
     subs = query(
         "SELECT s.*, (SELECT original_name FROM files f WHERE f.submission_id = s.id AND f.kind = 'original'"
-        " ORDER BY f.id LIMIT 1) AS file_name FROM submissions s WHERE s.user_id = ? ORDER BY s.updated_at DESC",
+        f" ORDER BY f.id LIMIT 1) AS file_name, {FIRST_SENT_SQL} AS first_sent_at"
+        " FROM submissions s WHERE s.user_id = ? ORDER BY s.updated_at DESC",
         (g.user["id"],),
     )
     open_count = sum(1 for s in subs if s["status"] in OPEN_STATUSES)
@@ -145,8 +146,10 @@ def submission(sub_id):
         "UPDATE notifications SET is_read = 1 WHERE user_id = ? AND submission_id = ? AND is_read = 0",
         (g.user["id"], sub_id),
     )
+    first_sent = next((e["created_at"] for e in events if e["type"] == "results_sent"), None)
+    t = timing(sub["created_at"], sub["status"], first_sent, current_app.config["REVIEW_MINUTES"])
     return render_template(
-        "portal/detail.html", sub=sub, originals=originals, results=results, events=events, reviewer=reviewer
+        "portal/detail.html", sub=sub, originals=originals, results=results, events=events, reviewer=reviewer, t=t
     )
 
 

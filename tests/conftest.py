@@ -33,6 +33,7 @@ def app(tmp_path):
         "UPLOAD_DIR": str(tmp_path / "uploads"),
         "MAX_CONTENT_LENGTH": 1024 * 1024,
         "MAIL_OUTBOX": [],
+        "SMS_OUTBOX": [],
         "BASE_URL": "https://example.test",
     })
     yield app
@@ -75,7 +76,7 @@ class Session:
 def users(app):
     with app.app_context():
         ids = {
-            "alice": create_user("alice@example.com", "Alice Doe", "password123"),
+            "alice": create_user("alice@example.com", "Alice Doe", "password123", phone="+254712345678"),
             "bob": create_user("bob@example.com", "Bob Roe", "password123"),
             "admin": create_user("admin@example.com", "Rita Reviewer", "password123", role="admin"),
             "admin2": create_user("admin2@example.com", "Sam Second", "password123", role="admin"),

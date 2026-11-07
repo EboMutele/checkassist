@@ -2,11 +2,28 @@
 import re
 from functools import wraps
 
-from flask import Blueprint, abort, flash, g, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, current_app, flash, g, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash
 
 from .db import create_user, execute, query, utcnow
 from .security import csrf_token, login_throttle
+from .sms import normalize_phone
+
+
+def phone_error():
+    cc = current_app.config["DEFAULT_COUNTRY_CODE"]
+    if cc:
+        return f"Enter a valid mobile number, for example 0712 345 678 or +{cc} 712 345 678."
+    return "Enter your mobile number starting with + and your country code."
+
+
+def read_phone(raw):
+    """Return (e164_number, error_message)."""
+    raw = (raw or "").strip()[:40]
+    if not raw:
+        return None, "Enter your mobile number so we can text you when your feedback is ready."
+    phone = normalize_phone(raw, current_app.config["DEFAULT_COUNTRY_CODE"])
+    return (phone, None) if phone else (None, phone_error())
 
 bp = Blueprint("auth", __name__)
 
@@ -68,17 +85,21 @@ def _start_session(user_id):
 def register():
     if g.user:
         return redirect(home_for(g.user))
-    form = {"name": "", "email": ""}
+    form = {"name": "", "email": "", "phone": ""}
     if request.method == "POST":
         form["name"] = request.form.get("name", "").strip()[:100]
         form["email"] = request.form.get("email", "").strip().lower()[:254]
+        form["phone"] = request.form.get("phone", "").strip()[:40]
         password = request.form.get("password", "")
         confirm = request.form.get("confirm", "")
         error = None
+        phone, phone_err = read_phone(form["phone"])
         if not form["name"]:
             error = "Enter your name."
         elif not EMAIL_RE.match(form["email"]):
             error = "Enter a valid email address."
+        elif phone_err:
+            error = phone_err
         elif len(password) < 8:
             error = "Use a password with at least 8 characters."
         elif password != confirm:
@@ -88,7 +109,7 @@ def register():
         if error:
             flash(error, "error")
         else:
-            uid = create_user(form["email"], form["name"], password)
+            uid = create_user(form["email"], form["name"], password, phone=phone)
             _start_session(uid)
             flash("Welcome! Upload your first document whenever you're ready.", "success")
             return redirect(url_for("portal.dashboard"))
@@ -116,6 +137,31 @@ def login():
         login_throttle.fail(key)
         flash("That email and password don't match an account.", "error")
     return render_template("auth/login.html", email=email)
+
+
+@bp.route("/account", methods=("GET", "POST"))
+@login_required
+def account():
+    form = {"name": g.user["name"], "phone": g.user["phone"] or ""}
+    if request.method == "POST":
+        form["name"] = request.form.get("name", "").strip()[:100]
+        form["phone"] = request.form.get("phone", "").strip()[:40]
+        if g.user["role"] == "admin" and not form["phone"]:
+            phone, error = None, None  # reviewers don't get "feedback ready" texts
+        else:
+            phone, error = read_phone(form["phone"])
+        if not form["name"]:
+            error = "Enter your name."
+        if error:
+            flash(error, "error")
+            return render_template("auth/account.html", form=form), 400
+        execute("UPDATE users SET name = ?, phone = ? WHERE id = ?", (form["name"], phone, g.user["id"]))
+        if g.user["role"] == "admin":
+            flash("Saved.", "success")
+        else:
+            flash(f"Saved. We'll text {phone} when your feedback is ready.", "success")
+        return redirect(url_for("auth.account"))
+    return render_template("auth/account.html", form=form)
 
 
 @bp.route("/logout", methods=("POST",))

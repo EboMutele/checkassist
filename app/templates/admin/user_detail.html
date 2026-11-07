@@ -6,7 +6,10 @@
 <header class="page-head">
   <div>
     <h1>{{ user.name }}</h1>
-    <p class="muted"><a href="mailto:{{ user.email }}">{{ user.email }}</a></p>
+    <p class="muted contact-line">
+      <a href="mailto:{{ user.email }}">{{ user.email }}</a>
+      {% if user.phone %}<a href="tel:{{ user.phone }}">{{ user.phone }}</a>{% elif user.role != 'admin' %}<span>No mobile number saved</span>{% endif %}
+    </p>
   </div>
 </header>
 <dl class="facts">

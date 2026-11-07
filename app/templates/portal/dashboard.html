@@ -2,6 +2,7 @@
 {% from "macros.html" import status_pill with context %}
 {% block title %}Your documents{% endblock %}
 {% block content %}
+{% if open_count %}<div data-autorefresh="60" hidden></div>{% endif %}
 <header class="page-head">
   <div>
     <h1>Your documents</h1>
@@ -10,6 +11,11 @@
   {% if subs %}<a class="btn btn-primary" href="{{ url_for('portal.new_submission') }}">Upload a document</a>{% endif %}
 </header>
 
+{% if not current_user.phone %}
+  <p class="callout callout-warn">
+    Add your mobile number and we'll text you the moment your feedback is ready. <a href="{{ url_for('auth.account') }}">Add mobile number</a>
+  </p>
+{% endif %}
 {% for s in waiting_on_user %}
   <p class="callout callout-warn">
     Your reviewer has a question about <a href="{{ url_for('portal.submission', sub_id=s.id) }}#conversation">{{ s.title }}</a>. Reply so they can finish.
@@ -25,9 +31,15 @@
             <span class="doc-title">{{ s.title }}</span>
             <span class="muted small">{{ s.file_name }}</span>
           </span>
+          {% set t = timing_for(s) %}
           <span class="doc-side">
             {{ status_pill(s.status) }}
-            <span class="muted small">Updated {{ s.updated_at|time_ago }}</span>
+            <span class="muted small">
+              {%- if t.state == 'due' %}Expected in about {{ t.minutes_left|minutes }}
+              {%- elif t.state == 'overdue' %}Almost there, we'll email you
+              {%- elif t.state == 'done' %}Reviewed in {{ t.took|minutes }}
+              {%- else %}Updated {{ s.updated_at|time_ago }}{% endif -%}
+            </span>
           </span>
         </a>
       </li>
@@ -36,7 +48,7 @@
 {% else %}
   <section class="empty sheet">
     <h2>Upload your first document</h2>
-    <p>Send an essay, report or application and a reviewer will read it and send back notes. You'll get an email when it's done.</p>
+    <p>Send an essay, report or application and a reviewer will read it and send back notes{% if review_minutes %}, usually within {{ review_minutes|minutes }}{% endif %}. We'll tell you the moment it's done.</p>
     <a class="btn btn-primary" href="{{ url_for('portal.new_submission') }}">Upload a document</a>
   </section>
 {% endif %}

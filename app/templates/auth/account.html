@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf with context %}
+{% block title %}Your account{% endblock %}
+{% block content %}
+<section class="narrow auth sheet">
+  <h1>Your account</h1>
+  <p class="muted">{{ current_user.email }}</p>
+  <form method="post" class="form">
+    {{ csrf() }}
+    <label for="name">Your name</label>
+    <input id="name" name="name" autocomplete="name" required maxlength="100" value="{{ form.name }}">
+    {% include "auth/_phone_field.html" %}
+    <button type="submit" class="btn btn-primary">Save changes</button>
+  </form>
+</section>
+{% endblock %}

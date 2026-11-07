@@ -1,12 +1,13 @@
 """Admin pages: review queue, submission workspace, sending results, users."""
 import re
 
-from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
+from flask import Blueprint, abort, current_app, flash, g, redirect, render_template, request, url_for
 
 from .auth import admin_required
 from .db import execute, get_db, query, utcnow
-from .helpers import OPEN_STATUSES, STATUSES, extract_preview, word_count
+from .helpers import FIRST_SENT_SQL, OPEN_STATUSES, STATUSES, extract_preview, ref, timing, word_count
 from .notify import notify
+from .sms import feedback_ready_text, mask_phone, send_sms
 from .security import validate_upload
 from .storage import get_storage
 from .user_views import add_event, store_file
@@ -61,6 +62,35 @@ def _back(sub_id, anchor=""):
     return redirect(url_for("admin.submission", sub_id=sub_id) + anchor)
 
 
+def _turnaround_stats():
+    """Last 7 days of first sends measured against the promise, plus what's overdue right now."""
+    minutes = current_app.config["REVIEW_MINUTES"]
+    week = query(
+        "SELECT COUNT(*) AS n, AVG(mins) AS avg_min, SUM(CASE WHEN mins <= ? THEN 1 ELSE 0 END) AS on_time FROM ("
+        " SELECT (julianday(first_sent) - julianday(created_at)) * 1440 AS mins FROM ("
+        f"  SELECT s.created_at, {FIRST_SENT_SQL} AS first_sent FROM submissions s)"
+        " WHERE first_sent >= strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-7 days'))",
+        (minutes,),
+        one=True,
+    )
+    overdue = 0
+    if minutes:
+        overdue = query(
+            "SELECT COUNT(*) AS n FROM submissions s WHERE s.status IN ('submitted', 'in_review')"
+            f" AND {FIRST_SENT_SQL} IS NULL AND s.created_at < strftime('%Y-%m-%dT%H:%M:%SZ', 'now', ?)",
+            (f"-{minutes} minutes",),
+            one=True,
+        )["n"]
+    sent = week["n"] or 0
+    return {
+        "minutes": minutes,
+        "sent_7d": sent,
+        "avg_min_7d": round(week["avg_min"]) if week["avg_min"] is not None else None,
+        "on_time_pct": round(100 * (week["on_time"] or 0) / sent) if sent and minutes else None,
+        "overdue": overdue,
+    }
+
+
 @bp.route("/")
 @admin_required
 def queue():
@@ -88,7 +118,7 @@ def queue():
     # Open work is first-in, first-out; finished work shows newest first.
     order = "s.created_at ASC" if tab in ("open", "submitted", "in_review", "needs_info", "mine") else "s.updated_at DESC"
     rows = query(
-        "SELECT s.*, u.name AS user_name, u.email AS user_email, a.name AS assignee_name"
+        f"SELECT s.*, u.name AS user_name, u.email AS user_email, a.name AS assignee_name, {FIRST_SENT_SQL} AS first_sent_at"
         " FROM submissions s JOIN users u ON u.id = s.user_id LEFT JOIN users a ON a.id = s.assigned_to"
         f" {where_sql} ORDER BY {order} LIMIT ? OFFSET ?",
         (*args, PER_PAGE + 1, (page - 1) * PER_PAGE),
@@ -104,14 +134,7 @@ def queue():
         (g.user["id"],),
         one=True,
     )["n"]
-    stats = query(
-        "SELECT"
-        " (SELECT MIN(created_at) FROM submissions WHERE status IN ('submitted','in_review')) AS oldest_open,"
-        " (SELECT COUNT(*) FROM submissions WHERE feedback_sent_at >= strftime('%Y-%m-%dT%H:%M:%SZ','now','-7 days')) AS done_7d,"
-        " (SELECT AVG((julianday(feedback_sent_at) - julianday(created_at)) * 24) FROM submissions"
-        "   WHERE feedback_sent_at >= strftime('%Y-%m-%dT%H:%M:%SZ','now','-30 days')) AS avg_hours_30d",
-        one=True,
-    )
+    stats = _turnaround_stats()
     return render_template(
         "admin/queue.html", rows=rows, tab=tab, tabs=TABS, q=q, page=page, has_next=has_next,
         counts=counts, stats=stats,
@@ -142,9 +165,11 @@ def submission(sub_id):
         "UPDATE notifications SET is_read = 1 WHERE user_id = ? AND submission_id = ? AND is_read = 0",
         (g.user["id"], sub_id),
     )
+    first_sent = next((e["created_at"] for e in events if e["type"] == "results_sent"), None)
+    t = timing(sub["created_at"], sub["status"], first_sent, current_app.config["REVIEW_MINUTES"])
     return render_template(
         "admin/detail.html", sub=sub, originals=originals, results=results, preview=preview,
-        preview_words=word_count(preview), events=events, admins=admins, other_count=other_count,
+        preview_words=word_count(preview), events=events, admins=admins, other_count=other_count, t=t,
     )
 
 
@@ -304,11 +329,32 @@ def results(sub_id):
             email_subject=f"Your feedback is ready: {sub['title']}",
             link_endpoint="portal.submission",
         )
-        flash("Results sent. The customer has been notified.", "success")
+        texted = _text_feedback_ready(sub, resend)
+        flash(
+            "Results sent. The customer has been emailed" + (" and texted." if texted else ". No text was sent; see the timeline."),
+            "success",
+        )
     else:
         conn.commit()
         flash("Draft saved. The customer can't see it until you send results.", "success")
     return _back(sub_id, "#results")
+
+
+def _text_feedback_ready(sub, resend):
+    """Text the customer that results are ready, and log the outcome on the timeline for reviewers."""
+    customer = query("SELECT phone FROM users WHERE id = ?", (sub["user_id"],), one=True)
+    phone = customer["phone"] if customer else None
+    if not phone:
+        result_note, ok = "No text sent: the customer has no mobile number saved.", False
+    else:
+        link = current_app.config["BASE_URL"].rstrip("/") + url_for("portal.submission", sub_id=sub["id"])
+        message = feedback_ready_text(current_app.config["APP_NAME"], ref(sub["id"]), link, updated=resend)
+        result = send_sms(phone, message)
+        ok = result.ok
+        result_note = f"Text sent to {mask_phone(phone)}." if ok else f"Text to {mask_phone(phone)} failed: {result.error}"
+    add_event(sub["id"], g.user["id"], "sms", result_note, internal=True)
+    get_db().commit()
+    return ok
 
 
 @bp.route("/files/<int:file_id>/delete", methods=("POST",))
@@ -335,8 +381,8 @@ def users():
     page = _page()
     where, args = "", []
     if q:
-        where = "WHERE (u.email LIKE ? OR u.name LIKE ?)"
-        args = [f"%{q}%", f"%{q}%"]
+        where = "WHERE (u.email LIKE ? OR u.name LIKE ? OR u.phone LIKE ?)"
+        args = [f"%{q}%", f"%{q}%", f"%{q.replace(' ', '')}%"]
     rows = query(
         "SELECT u.*, COUNT(s.id) AS total,"
         " SUM(CASE WHEN s.status IN ('submitted','in_review','needs_info') THEN 1 ELSE 0 END) AS open,"

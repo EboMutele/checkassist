@@ -125,7 +125,7 @@ main.wrap { padding-top: 24px; padding-bottom: 64px; }
 .form > .btn-block { justify-self: stretch; }
 label, .label-like { font-weight: 600; margin-top: 12px; }
 .label-like { margin-bottom: 4px; }
-input[type="text"], input[type="email"], input[type="password"], input[type="search"], input:not([type]), textarea, select {
+input[type="text"], input[type="email"], input[type="password"], input[type="search"], input[type="tel"], input:not([type]), textarea, select {
   width: 100%; font: inherit; color: var(--ink); background: var(--paper);
   border: 1.5px solid var(--rule-strong); border-radius: var(--r-ctl); padding: 10px 12px;
 }
@@ -405,3 +405,19 @@ table.queue { width: 100%; border-collapse: collapse; background: var(--paper); 
 
 .sheet-pad { padding: 28px clamp(20px, 5vw, 40px); }
 .auth { max-width: 480px; }
+
+/* ---------- review-time promise ---------- */
+.eta { font-size: 1rem; color: var(--ink); }
+.eta time { font-weight: 700; }
+.head-status { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.due { font-size: .875rem; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
+.due-soon { color: var(--warn); }
+.due-late { color: var(--red-dark); }
+.due-late::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--red); margin-right: 6px; vertical-align: 1px; }
+.due-done { color: var(--good); }
+.due-slow { color: var(--ink-2); }
+.queue tr.row-late td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+.stat-late { color: var(--red-dark); font-weight: 700; }
+@media (max-width: 719px) { .head-status { align-items: flex-start; } }
+
+.contact-line { display: flex; flex-wrap: wrap; gap: 4px 18px; }

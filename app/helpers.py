@@ -1,8 +1,9 @@
 """Shared lookups, formatting and document text extraction."""
 import html
+import math
 import re
 import zipfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 STATUSES = {
     "submitted": {"label": "Submitted", "tone": "neutral", "user_hint": "Waiting for a reviewer to pick it up."},
@@ -109,3 +110,57 @@ def extract_preview(path, ext):
 
 def word_count(text) -> int:
     return len(re.findall(r"\b\w+\b", text or ""))
+
+
+# ---- review-time promise -------------------------------------------------------
+
+def minutes_label(n) -> str:
+    n = int(n)
+    return f"{n} minute" if n == 1 else f"{n} minutes"
+
+
+def timing(created_at, status, first_sent_at=None, review_minutes=20, now=None):
+    """Where a submission stands against the review-time promise.
+
+    state is one of:
+      "done"     feedback was sent; `took` is minutes from upload to first send
+      "waiting"  the reviewer asked the customer something; the customer holds the clock
+      "due"      still within the promise; `minutes_left`, `due_at`
+      "overdue"  past the promise; `minutes_over`, `due_at`
+      None       no promise configured, or nothing to say
+    """
+    now = now or datetime.now(timezone.utc)
+    created = parse_ts(created_at)
+    t = {"state": None, "promise": review_minutes}
+    if created is None:
+        return t
+    if first_sent_at:
+        took = max(1, round((parse_ts(first_sent_at) - created).total_seconds() / 60))
+        t.update(state="done", took=took, on_time=bool(review_minutes) and took <= review_minutes)
+        return t
+    if status == "needs_info":
+        t["state"] = "waiting"
+        return t
+    if not review_minutes or status == "completed":
+        return t
+    due = created + timedelta(minutes=review_minutes)
+    secs = (due - now).total_seconds()
+    t["due_at"] = due.strftime("%Y-%m-%dT%H:%M:%SZ")
+    t["due_hhmm"] = due.strftime("%H:%M")
+    if secs >= 0:
+        t.update(state="due", minutes_left=max(1, math.ceil(secs / 60)))
+    else:
+        t.update(state="overdue", minutes_over=max(1, math.floor(-secs / 60)))
+    return t
+
+
+def timing_for(row, review_minutes):
+    """timing() for a submissions row; uses first_sent_at when the query provides it."""
+    keys = row.keys()
+    first = row["first_sent_at"] if "first_sent_at" in keys else row["feedback_sent_at"]
+    return timing(row["created_at"], row["status"], first, review_minutes)
+
+
+FIRST_SENT_SQL = (
+    "(SELECT MIN(e.created_at) FROM events e WHERE e.submission_id = s.id AND e.type = 'results_sent')"
+)
