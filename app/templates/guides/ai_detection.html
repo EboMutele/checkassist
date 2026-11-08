@@ -1,0 +1,65 @@
+{% extends "guide.html" %}
+{% block h1 %}Worried an AI detector will flag your work?{% endblock %}
+{% block lede %}AI detectors estimate how likely it is that text was machine-written. They aren't proof, and they do flag human writing. Here's how to show your work is yours, and what to do if you're flagged.{% endblock %}
+
+{% block body %}
+<section aria-labelledby="say-title">
+  <h2 id="say-title">What the detectors themselves say</h2>
+  <p>Turnitin shows AI scores between 1% and 19% with an asterisk instead of a number, because false positives are more likely in that range. It also says its AI score shouldn't be the only basis for action against a student: a person has to review the work under your institution's policy.</p>
+  <p>Independent research points the same way. A 2023 Stanford study found that several popular AI detectors labelled more than half of a set of essays by non-native English speakers as AI-generated. Short, formulaic or heavily edited writing is also more likely to be misread.</p>
+</section>
+
+<section aria-labelledby="protect-title">
+  <h2 id="protect-title">Protect yourself before you submit</h2>
+  <ul class="checklist">
+    <li><strong>Write in one document and keep its version history</strong> (Google Docs and Word both keep one), so your work shows how it grew.</li>
+    <li><strong>Keep your notes, outline and sources</strong> until your mark is final.</li>
+    <li><strong>Know your course's AI policy.</strong> Some allow AI for brainstorming or grammar, some ban it, and some ask you to declare it.</li>
+    <li><strong>Declare any AI use your policy asks you to,</strong> in the way it asks.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="flagged-title">
+  <h2 id="flagged-title">If you're flagged</h2>
+  <ol class="guide-steps">
+    <li><strong>Don't panic, and don't delete anything.</strong> A flag starts a conversation; it isn't a finding.</li>
+    <li><strong>Ask what the concern is</strong> and what process your institution follows.</li>
+    <li><strong>Share your evidence:</strong> version history, notes, drafts and sources.</li>
+    <li><strong>Offer to talk through your work.</strong> Explaining your argument and sources is strong evidence it's yours.</li>
+    <li><strong>Get support</strong> from your students' union or advice service if it becomes a formal case.</li>
+  </ol>
+</section>
+
+<section aria-labelledby="humanizer-title">
+  <h2 id="humanizer-title">Why “AI humanizers” make it worse</h2>
+  <p>Humanizer tools rewrite text to change how it scores. They backfire in three ways. Using them to disguise AI-written work counts as academic misconduct under most universities' policies. Since August 2025, Turnitin also looks for text that has been run through these tools. And the rewriting often blurs your meaning and mangles your citations, so even honest writing comes out worse.</p>
+  <p>If the work is yours, the best evidence is your process, not a rewritten version of it.</p>
+</section>
+
+<section aria-labelledby="us-title">
+  <h2 id="us-title">Where we fit</h2>
+  <p>We don't run AI detectors, produce AI scores, or rewrite work to change how it scores. A reviewer reads your own writing and shows you where it's unclear, generic or unsupported, and you make the changes. Clear reasoning, specific examples and properly cited sources make any piece of writing stronger. <a href="{{ url_for('seo.how_we_review') }}">How we review</a></p>
+</section>
+{% endblock %}
+
+{% block faq %}
+<details>
+  <summary>Can you check my essay for AI?</summary>
+  <p>No. We don't run AI detectors or give AI scores. A reviewer reads your writing for argument, evidence and clarity.</p>
+</details>
+<details>
+  <summary>Can you make AI-written text pass a detector?</summary>
+  <p>No. We review your own writing; we don't disguise AI-generated text or rewrite work so that it scores differently.</p>
+</details>
+<details>
+  <summary>Is it allowed to use AI at all?</summary>
+  <p>It depends on your course and the assignment. Check the brief and your institution's AI policy, and ask your tutor if it isn't clear.</p>
+</details>
+<details>
+  <summary>Do grammar tools count as AI?</summary>
+  <p>Some policies treat spelling and grammar fixes differently from tools that generate or rewrite text. Check yours, and declare what you used if it asks.</p>
+</details>
+{% endblock %}
+
+{% block closing %}Get a person's eyes on your own writing.{% endblock %}
+{% block note %}Turnitin is a trademark of Turnitin, LLC. {{ app_name }} isn't affiliated with Turnitin. Study: Liang et al., “GPT detectors are biased against non-native English writers”, Patterns, 2023.{% endblock %}

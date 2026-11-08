@@ -222,3 +222,32 @@ def test_redirect_to_base_url_host(live, app, client):
     assert client.get("/pricing", headers={"Host": "example.test"}).status_code == 200
     # Paystack's webhook and other POSTs are never redirected
     assert client.post("/billing/webhook", data=b"{}", headers={"Host": "www.example.test"}).status_code != 301
+
+
+def test_guides_are_linked_from_every_page_footer(live, client):
+    hrefs = parse(client.get("/pricing")).hrefs
+    for page in seo.GUIDES:
+        assert page.path in hrefs
+
+
+def test_public_pages_never_promise_to_beat_turnitin_or_ai_detectors(live, client):
+    """The guides reach people searching for Turnitin, AI detectors and humanizers, but the site must
+    stay honest: it doesn't run Turnitin and doesn't disguise AI-written work."""
+    promises = re.compile(r"(bypass|beat|pass|fool|evade|get past|undetectable)\W+(\w+\W+){0,3}"
+                          r"(turnitin|ai detect|detector)|turnitin (report|check)s? (for|in|from) \$|humaniz(e|er) your",
+                          re.I)
+    for path in PUBLIC:
+        resp = client.get(path)
+        h = parse(resp)
+        for text in (h.title, h.meta["description"]):
+            assert not promises.search(text), (path, text)
+        body = re.sub(r"<[^>]+>", " ", resp.get_data(as_text=True).split("</head>", 1)[1])
+        for match in promises.finditer(body):
+            sentence = body[max(0, match.start() - 80):match.end() + 40]
+            # only allowed as a question we answer "No" to, or advice against it
+            assert re.search(r"\?|No\.|isn't|aren't|won't|don't|can't|No one", sentence), (path, sentence)
+    turnitin = client.get("/turnitin-similarity-score").get_data(as_text=True)
+    assert "We don't run Turnitin" in turnitin and "isn't affiliated with or endorsed by Turnitin" in turnitin
+    ai = client.get("/ai-detection").get_data(as_text=True)
+    assert "Can you make AI-written text pass a detector?" in ai and "<p>No. We review your own writing" in ai
+    assert "isn't affiliated with Chegg" in client.get("/chegg-alternative").get_data(as_text=True)

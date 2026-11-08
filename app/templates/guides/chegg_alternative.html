@@ -1,0 +1,50 @@
+{% extends "guide.html" %}
+{% block h1 %}Looking for a Chegg alternative for your essays?{% endblock %}
+{% block lede %}Chegg is best known for homework help: textbook solutions, expert answers and automated writing tools. If what you need is a real person reading your own essay and telling you what to fix, that's a different job, and it's ours.{% endblock %}
+
+{% block body %}
+<section aria-labelledby="compare-title">
+  <h2 id="compare-title">How we compare</h2>
+  <table class="compare">
+    <thead><tr><th scope="col"><span class="visually-hidden">Question</span></th><th scope="col">Chegg</th><th scope="col">{{ app_name }}</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Built for</th><td data-label="Chegg">Homework help, textbook solutions and study tools</td><td data-label="{{ app_name }}">Feedback on writing you've done yourself</td></tr>
+      <tr><th scope="row">Who checks your essay</th><td data-label="Chegg">Automated tools for plagiarism, grammar and citations</td><td data-label="{{ app_name }}">A person who reads every page</td></tr>
+      <tr><th scope="row">What you get back</th><td data-label="Chegg">Automated suggestions and reports</td><td data-label="{{ app_name }}">Short notes on what to fix first, and your file marked up line by line</td></tr>
+      <tr><th scope="row">How you pay</th><td data-label="Chegg">Monthly subscription</td><td data-label="{{ app_name }}">Per document, {{ single_price }} a check, or packs. No subscription needed.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section aria-labelledby="chegg-fit-title">
+  <h2 id="chegg-fit-title">When Chegg is the better fit</h2>
+  <p>For maths and science homework, step-by-step textbook solutions and quick subject questions, Chegg is built for the job and we aren't. We don't answer homework questions.</p>
+</section>
+
+<section aria-labelledby="us-fit-title">
+  <h2 id="us-fit-title">When we're the better fit</h2>
+  <ul class="checklist">
+    <li>You've written an essay, report, dissertation chapter or application and want it read before you submit.</li>
+    <li>You want human judgement on your argument, structure and citations, not just a grammar scan.</li>
+    <li>You'd rather pay per document than keep a subscription running.</li>
+  </ul>
+  <p><a href="{{ url_for('seo.essay_review') }}">See what an essay review covers</a></p>
+</section>
+{% endblock %}
+
+{% block faq %}
+<details>
+  <summary>Do you write essays or answer homework questions?</summary>
+  <p>No. We review writing you've done yourself and show you what to fix. The work stays yours. <a href="{{ url_for('seo.how_we_review') }}">What we won't do</a></p>
+</details>
+<details>
+  <summary>Do you have a plagiarism checker like Chegg's?</summary>
+  <p>We don't run software scans. A reviewer reads for the citation gaps that lead to accidental plagiarism. See <a href="{{ url_for('seo.citation_check') }}">citation check</a>.</p>
+</details>
+<details>
+  <summary>How fast is it?</summary>
+  <p>{% if review_minutes %}About {{ review_minutes|minutes }} for most essays. {% endif %}We text and email you when your notes are ready.</p>
+</details>
+{% endblock %}
+
+{% block note %}Chegg is a trademark of Chegg, Inc. {{ app_name }} isn't affiliated with Chegg. Chegg's features and prices change, so check chegg.com for current plans.{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "guide.html" %}
+{% block h1 %}Your Turnitin similarity score, explained{% endblock %}
+{% block lede %}A similarity score isn't a plagiarism score. It's the share of your text that matches other sources. What matters is whether each match is quoted and credited, and that's what your marker looks at.{% endblock %}
+
+{% block body %}
+<section aria-labelledby="means-title">
+  <h2 id="means-title">What the percentage means</h2>
+  <p>Turnitin compares your paper with web pages, published work and papers other students have submitted, highlights the passages that match, and adds them up. A properly quoted and cited passage still counts as a match. So a 25% score can be perfectly fine, and a 6% score can be a problem, depending on what matched and how it's credited.</p>
+  <p>There's no universal “safe” percentage. Your course decides how to read the report, and many markers exclude quotes and the reference list before they look at it.</p>
+</section>
+
+<section aria-labelledby="why-title">
+  <h2 id="why-title">Why matches happen</h2>
+  <ul class="checklist">
+    <li><strong>Quotes,</strong> even correctly cited ones.</li>
+    <li><strong>Your reference list,</strong> because other papers cite the same sources.</li>
+    <li><strong>Common phrases and technical terms</strong> that everyone in your field uses.</li>
+    <li><strong>The assignment question or a template</strong> pasted into your paper.</li>
+    <li><strong>Paraphrases that stay too close</strong> to the original wording.</li>
+    <li><strong>Your own earlier work,</strong> if it was submitted before. Reusing it can count as self-plagiarism.</li>
+    <li><strong>Sources you forgot to cite.</strong> These are the matches that cause real trouble.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="fix-title">
+  <h2 id="fix-title">Fix it before you submit</h2>
+  <ol class="guide-steps">
+    <li><strong>Check every quote</strong> has quotation marks, a citation and, in most styles, a page number.</li>
+    <li><strong>Paraphrase from understanding.</strong> Close the source, write the idea in your own words, then cite it.</li>
+    <li><strong>Cite ideas, not just words.</strong> A paraphrase still needs a citation.</li>
+    <li><strong>Match citations to references.</strong> Every in-text citation in your list, every list entry cited.</li>
+    <li><strong>Ask before reusing your own work.</strong> Most courses need permission to resubmit earlier writing.</li>
+    <li><strong>See if your university offers Draft Coach.</strong> Some institutions turn on Turnitin's student add-on for Google Docs or Word online, which runs similarity, citation and grammar checks on drafts.</li>
+  </ol>
+</section>
+
+<section aria-labelledby="careful-title">
+  <h2 id="careful-title">Be careful with “Turnitin check” websites</h2>
+  <p>Turnitin's student checks come through your institution. Websites that charge to run your paper through Turnitin aren't Turnitin. Depending on how they submit it, your paper can end up stored in Turnitin's database and then match your own final submission. Ask how they get access before you upload anything.</p>
+</section>
+
+<section aria-labelledby="us-title">
+  <h2 id="us-title">Where we fit</h2>
+  <p>We don't run Turnitin or produce similarity scores. A reviewer reads your paper for the problems that create risky matches: borrowed wording without quotation marks, ideas without citations, and citations that don't match your references. You get notes and a marked-up copy, so you can fix them before you submit. <a href="{{ url_for('seo.citation_check') }}">See what a citation check covers</a>.</p>
+</section>
+{% endblock %}
+
+{% block faq %}
+<details>
+  <summary>What's a good Turnitin similarity score?</summary>
+  <p>There isn't one number. A literature review full of cited quotes can score high and be fine; a short essay with one uncited paragraph can score low and still be a problem. Ask your tutor how your course reads the report.</p>
+</details>
+<details>
+  <summary>Does my reference list count towards the score?</summary>
+  <p>It can, unless your marker excludes the bibliography in their settings. Many do. A matched reference list on its own isn't a concern.</p>
+</details>
+<details>
+  <summary>Will a paraphrasing tool lower my score?</summary>
+  <p>It changes words, not where the idea came from, so the source still needs citing. Turnitin also flags text changed by AI paraphrasing and “humanizer” tools. See <a href="{{ url_for('seo.ai_detection') }}">AI detectors and your work</a>.</p>
+</details>
+<details>
+  <summary>What does the AI writing score in my report mean?</summary>
+  <p>It's a separate estimate of how much text may be AI-generated. Turnitin says it shouldn't be the only basis for action against a student. Our <a href="{{ url_for('seo.ai_detection') }}">guide to AI detectors</a> covers what to do if you're flagged.</p>
+</details>
+{% endblock %}
+
+{% block note %}Turnitin is a trademark of Turnitin, LLC. {{ app_name }} isn't affiliated with or endorsed by Turnitin.{% endblock %}

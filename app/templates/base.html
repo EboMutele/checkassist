@@ -108,6 +108,12 @@
           {% for s in services %}<li><a href="{{ url_for(s.endpoint) }}">{{ s.label }}</a></li>{% endfor %}
         </ul>
       </nav>
+      <nav class="footer-links" aria-label="Guides">
+        <h2 class="footer-head">Guides</h2>
+        <ul>
+          {% for s in guides %}<li><a href="{{ url_for(s.endpoint) }}">{{ s.label }}</a></li>{% endfor %}
+        </ul>
+      </nav>
       <nav class="footer-links" aria-label="About">
         <h2 class="footer-head">About</h2>
         <ul>

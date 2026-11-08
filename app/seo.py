@@ -37,6 +37,7 @@ class Page:
     label: str = ""     # short link text
     summary: str = ""   # one line for the home page's list of services
     service: str = ""   # schema.org serviceType, for service pages
+    guide: bool = False # listed under Guides in the footer
 
 
 PAGES = (
@@ -84,9 +85,28 @@ PAGES = (
          "What a reviewer checks in every document, what we never do (like rewriting your work for you), and "
          "how we keep your files private.",
          "2026-11-07", "how_we_review.html", "How we review"),
+    # Guides: honest answers to what students search for around Turnitin, AI detectors and Chegg.
+    # They say plainly what this site is (a human review) and isn't (Turnitin, an AI detector, a way
+    # around one). Keep it that way: pages that promise something else get found and then distrusted.
+    Page("seo.turnitin_similarity_score", "/turnitin-similarity-score",
+         "Turnitin similarity score: what it means",
+         "What a Turnitin similarity score does and doesn't tell your marker, why matches happen, and how to "
+         "fix the citation problems behind them before you submit.",
+         "2026-11-08", "guides/turnitin_similarity_score.html", "Turnitin scores explained", guide=True),
+    Page("seo.ai_detection", "/ai-detection",
+         "Flagged by an AI detector? What to do next",
+         "AI detectors give probabilities, not proof, and they do flag human writing. How to show your work "
+         "is yours, what to do if flagged, and why humanizers backfire.",
+         "2026-11-08", "guides/ai_detection.html", "AI detectors and your work", guide=True),
+    Page("seo.chegg_alternative", "/chegg-alternative",
+         "A Chegg alternative for essay feedback",
+         "Chegg is built for homework help and automated writing checks. If you want a real person to read "
+         "your essay and tell you what to fix, here's how we compare.",
+         "2026-11-08", "guides/chegg_alternative.html", "Chegg alternative", guide=True),
 )
 BY_ENDPOINT = {p.endpoint: p for p in PAGES}
 SERVICES = tuple(p for p in PAGES if p.service)
+GUIDES = tuple(p for p in PAGES if p.guide)
 
 
 def base_url():
@@ -215,6 +235,12 @@ def structured_data(page):
 
 # ---------- pages served here ----------
 
+def _date_label(iso_date):
+    y, m, d = (int(x) for x in iso_date.split("-"))
+    months = "January February March April May June July August September October November December".split()
+    return f"{d} {months[m - 1]} {y}"
+
+
 def _content_view(page):
     def view():
         # Visible prices follow the visitor (KES after the /local link); titles and structured data stay USD.
@@ -228,6 +254,7 @@ def _content_view(page):
             words_per_check=pricing.WORDS_PER_CHECK,
             example_words=example_words, example_checks=example_checks,
             example_pack_cost=pricing.pack_cost(example_checks, currency),
+            updated_label=_date_label(page.updated),
         )
     view.__name__ = page.endpoint.split(".", 1)[1]
     return view
@@ -334,4 +361,5 @@ def init_app(app):
     @app.context_processor
     def inject_seo():
         endpoint = request.endpoint if has_request_context() else None
-        return {"seo": head_for(endpoint), "services": SERVICES, "support_email": cfg["SUPPORT_EMAIL"]}
+        return {"seo": head_for(endpoint), "services": SERVICES, "guides": GUIDES,
+                "support_email": cfg["SUPPORT_EMAIL"]}
