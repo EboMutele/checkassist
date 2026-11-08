@@ -5,25 +5,29 @@ from functools import wraps
 from flask import Blueprint, abort, current_app, flash, g, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash
 
+from . import local, pricing
 from .db import create_user, execute, get_db, query, utcnow
 from .security import csrf_token, login_throttle
 from .sms import normalize_phone
 
 
-def phone_error():
-    cc = current_app.config["DEFAULT_COUNTRY_CODE"]
+def phone_error(cc=None):
+    cc = current_app.config["DEFAULT_COUNTRY_CODE"] if cc is None else cc
+    if cc == "254":
+        return "Enter a valid mobile number, for example 0712 345 678 or +254 712 345 678."
     if cc:
         return f"Enter a valid mobile number, for example 0712 345 678 or +{cc} 712 345 678."
     return "Enter your mobile number starting with + and your country code."
 
 
-def read_phone(raw):
-    """Return (e164_number, error_message)."""
+def read_phone(raw, cc=None):
+    """Return (e164_number, error_message). `cc` is the country code assumed for numbers without +."""
+    cc = current_app.config["DEFAULT_COUNTRY_CODE"] if cc is None else cc
     raw = (raw or "").strip()[:40]
     if not raw:
         return None, "Enter your mobile number so we can text you when your feedback is ready."
-    phone = normalize_phone(raw, current_app.config["DEFAULT_COUNTRY_CODE"])
-    return (phone, None) if phone else (None, phone_error())
+    phone = normalize_phone(raw, cc)
+    return (phone, None) if phone else (None, phone_error(cc))
 
 bp = Blueprint("auth", __name__)
 
@@ -93,7 +97,7 @@ def register():
         password = request.form.get("password", "")
         confirm = request.form.get("confirm", "")
         error = None
-        phone, phone_err = read_phone(form["phone"])
+        phone, phone_err = read_phone(form["phone"], local.phone_country_code())
         if not form["name"]:
             error = "Enter your name."
         elif not EMAIL_RE.match(form["email"]):
@@ -109,7 +113,10 @@ def register():
         if error:
             flash(error, "error")
         else:
-            uid = create_user(form["email"], form["name"], password, phone=phone)
+            via_link = local.came_through_link()
+            uid = create_user(form["email"], form["name"], password, phone=phone,
+                              currency=pricing.LOCAL_CURRENCY if via_link else pricing.CURRENCY_CODE,
+                              signup_source=local.SOURCE if via_link else None)
             free = current_app.config["SIGNUP_FREE_CHECKS"]
             if free:
                 from .billing import ADMIN_GRANT_VALID_MONTHS, _iso, _now, add_months, grant
@@ -120,7 +127,8 @@ def register():
             _start_session(uid)
             flash("Welcome! Upload your first document whenever you're ready.", "success")
             return redirect(next_url or url_for("portal.dashboard"))
-    return render_template("auth/register.html", form=form)
+    return render_template("auth/register.html", form=form, via_link=local.came_through_link(),
+                           single_price=pricing.single_price(local.visitor_currency()))
 
 
 @bp.route("/login", methods=("GET", "POST"))
@@ -156,7 +164,7 @@ def account():
         if g.user["role"] == "admin" and not form["phone"]:
             phone, error = None, None  # reviewers don't get "feedback ready" texts
         else:
-            phone, error = read_phone(form["phone"])
+            phone, error = read_phone(form["phone"], local.phone_country_code(g.user))
         if not form["name"]:
             error = "Enter your name."
         if error:

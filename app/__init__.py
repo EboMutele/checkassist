@@ -50,6 +50,7 @@ def create_app(test_config=None):
         # Payments (Paystack). Without a secret key, buying is switched off and admins can grant checks.
         PAYSTACK_SECRET_KEY=os.environ.get("PAYSTACK_SECRET_KEY", "").strip(),
         PAYSTACK_MONTHLY_PLAN_CODE=os.environ.get("PAYSTACK_MONTHLY_PLAN_CODE", "").strip(),
+        PAYSTACK_MONTHLY_PLAN_CODE_KES=os.environ.get("PAYSTACK_MONTHLY_PLAN_CODE_KES", "").strip(),
         PAYSTACK_CHANNELS=[c.strip() for c in os.environ.get("PAYSTACK_CHANNELS", "").split(",") if c.strip()],
         CHECKS_REQUIRED=_bool("CHECKS_REQUIRED", True),
         SIGNUP_FREE_CHECKS=max(0, int(os.environ.get("SIGNUP_FREE_CHECKS", "0"))),
@@ -68,6 +69,8 @@ def create_app(test_config=None):
         GOOGLE_SITE_VERIFICATION=os.environ.get("GOOGLE_SITE_VERIFICATION", "").strip(),
         BING_SITE_VERIFICATION=os.environ.get("BING_SITE_VERIFICATION", "").strip(),
         SUPPORT_EMAIL=os.environ.get("SUPPORT_EMAIL", "").strip(),
+        # The private Kenya link (app/local.py): KES prices and M-Pesa. Empty switches it off.
+        LOCAL_LINK_PATH=os.environ.get("LOCAL_LINK_PATH", "/local").strip(),
         REDIRECT_TO_BASE_URL=_bool("REDIRECT_TO_BASE_URL", False),
     )
     if test_config:
@@ -81,13 +84,14 @@ def create_app(test_config=None):
     db.init_app(app)
     security.init_app(app)
 
-    from . import admin_views, auth, billing, helpers, seo, sms, user_views
+    from . import admin_views, auth, billing, helpers, local, seo, sms, user_views
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(user_views.bp)
     app.register_blueprint(admin_views.bp)
     billing.init_app(app)
     seo.init_app(app)
+    local.init_app(app)
 
     app.jinja_env.filters.update(
         human_date=helpers.human_date,
@@ -120,7 +124,8 @@ def create_app(test_config=None):
             "allowed_label": security.ALLOWED_LABEL,
             "max_upload_mb": app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024),
             "review_minutes": app.config["REVIEW_MINUTES"],
-            "phone_cc": app.config["DEFAULT_COUNTRY_CODE"],
+            "phone_cc": local.phone_country_code(),
+            "currency": local.visitor_currency(),
             "server_now": db.utcnow(),
             "checks_balance": checks_balance,
             "checks_required": app.config["CHECKS_REQUIRED"],  # lets live timers correct for a wrong device clock

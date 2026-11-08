@@ -358,7 +358,20 @@ input[type="file"] { font: inherit; font-size: .9375rem; max-width: 100%; }
   .service-hero .hero-margin { padding-top: 84px; padding-bottom: 44px; gap: 36px; }
 }
 
+/* ---------- private Kenya page ---------- */
+.local-tag { display: inline-block; margin: 0 0 18px; padding: 4px 10px; border: 1.5px solid var(--red); border-radius: 999px; color: var(--red); font-size: .8125rem; font-weight: 700; letter-spacing: .01em; }
+.local-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 10px; }
+.local-cta .btn { padding: 14px 24px; font-size: 1.0625rem; }
+.local-cta .muted { font-size: .9375rem; flex-basis: 100%; }
+.rate-note { margin: 0; padding: 12px 0 16px; font-size: .8125rem; color: var(--ink-3); border-top: 1px solid var(--rule); }
+.rate-card-compact .rate-note { padding: 10px 0 12px; }
+.callout-local { background: var(--red-soft); color: var(--ink); box-shadow: inset 3px 0 0 var(--red); font-size: .9375rem; }
+
 /* ---------- admin ---------- */
+.currency-form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 4px; }
+.currency-form select { width: auto; padding: 6px 10px; font-size: .875rem; }
+.local-stats { margin: -8px 0 16px; font-size: .875rem; }
+
 .queue-stats { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: .9375rem; }
 .search { display: flex; gap: 8px; width: 100%; max-width: 400px; }
 .search input { flex: 1; min-width: 0; }

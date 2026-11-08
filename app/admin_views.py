@@ -9,7 +9,7 @@ from .helpers import (
     FIRST_SENT_SQL, OPEN_STATUSES, STATUSES, extract_preview, load_timings, ref, status_events_of, timing, word_count,
 )
 from .notify import notify
-from . import billing, pricing
+from . import billing, pricing, local
 from .sms import feedback_ready_text, mask_phone, send_sms
 from .security import validate_upload
 from .storage import get_storage
@@ -413,7 +413,24 @@ def user_detail(user_id):
     return render_template(
         "admin/user_detail.html", user=user, subs=subs, ledger=ledger,
         balance=billing.balance(user_id), subscription=billing.current_subscription(user_id),
+        currency_choices=CURRENCY_CHOICES,
     )
+
+
+CURRENCY_CHOICES = (("USD", "US dollars"), ("KES", "Kenyan shillings (M-Pesa)"))
+
+
+@bp.route("/users/<int:user_id>/currency", methods=("POST",))
+@admin_required
+def set_currency(user_id):
+    """For direct clients: price an account in KES (or back to USD). Affects new purchases only."""
+    user = query("SELECT * FROM users WHERE id = ? AND role = 'user'", (user_id,), one=True)
+    currency = request.form.get("currency", "")
+    if user is None or currency not in dict(CURRENCY_CHOICES):
+        abort(404 if user is None else 400)
+    local.set_currency(user_id, currency)
+    flash(f"{user['name']} now pays in {dict(CURRENCY_CHOICES)[currency].split(' (')[0].lower()}.", "success")
+    return redirect(url_for("admin.user_detail", user_id=user_id))
 
 
 @bp.route("/users/<int:user_id>/checks", methods=("POST",))
@@ -467,6 +484,10 @@ def payments():
         "SELECT currency, SUM(amount) AS total, COUNT(*) AS n FROM payments WHERE status = 'paid'"
         " AND paid_at >= strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-30 days') GROUP BY currency"
     )
+    via_link = query("SELECT COUNT(*) AS n FROM users WHERE signup_source = 'local'", one=True)["n"]
+    kes_accounts = query("SELECT COUNT(*) AS n FROM users WHERE role = 'user' AND currency = 'KES'", one=True)["n"]
+    missing_plans = [c for c in pricing.PRICES if not billing.monthly_plan_code(c)]
     return render_template("admin/payments.html", rows=rows, totals=totals, plans={p.id: p for p in pricing.PLANS},
-                           ready=billing.payments_ready(),
-                           monthly_ready=bool(current_app.config["PAYSTACK_MONTHLY_PLAN_CODE"]))
+                           ready=billing.payments_ready(), missing_plans=missing_plans,
+                           local_path=current_app.config["LOCAL_LINK_PATH"], via_link=via_link,
+                           kes_accounts=kes_accounts)

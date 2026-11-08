@@ -48,6 +48,10 @@ def _migrate(conn):
     user_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
     if "phone" not in user_cols:
         conn.execute("ALTER TABLE users ADD COLUMN phone TEXT")
+    if "currency" not in user_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN currency TEXT NOT NULL DEFAULT 'USD'")
+    if "signup_source" not in user_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN signup_source TEXT")
     sub_cols = {row[1] for row in conn.execute("PRAGMA table_info(submissions)")}
     for col, ddl in (("words", "INTEGER"), ("checks_spent", "INTEGER NOT NULL DEFAULT 0"),
                      ("checks_refunded", "INTEGER NOT NULL DEFAULT 0")):
@@ -64,10 +68,12 @@ def init_db():
     conn.commit()
 
 
-def create_user(email, name, password, role="user", phone=None):
+def create_user(email, name, password, role="user", phone=None, currency="USD", signup_source=None):
     return execute(
-        "INSERT INTO users (email, name, phone, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-        (email.strip().lower(), name.strip(), phone, generate_password_hash(password), role, utcnow()),
+        "INSERT INTO users (email, name, phone, password_hash, role, currency, signup_source, created_at)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (email.strip().lower(), name.strip(), phone, generate_password_hash(password), role, currency,
+         signup_source, utcnow()),
     )
 
 

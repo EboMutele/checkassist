@@ -13,7 +13,7 @@ from xml.sax.saxutils import escape
 from flask import (Blueprint, Response, current_app, has_request_context, redirect, render_template, request,
                    send_from_directory)
 
-from . import pricing
+from . import local, pricing
 
 bp = Blueprint("seo", __name__)
 log = logging.getLogger(__name__)
@@ -134,6 +134,16 @@ def head_for(endpoint):
         "google_verification": current_app.config["GOOGLE_SITE_VERIFICATION"],
         "bing_verification": current_app.config["BING_SITE_VERIFICATION"],
     }
+    if endpoint == "local.page":
+        # Not indexed, but it's shared on WhatsApp and social, so give it a proper link preview.
+        prices = pricing.plans(pricing.LOCAL_CURRENCY)
+        head["share"] = {
+            "title": f"Get your paper checked by a real reviewer – {app_name}",
+            "description": fill("For students in Kenya: a reviewer reads every page and sends notes and a "
+                                "marked-up copy{soon}. ") + f"From {pricing.money(prices[0].price, pricing.LOCAL_CURRENCY)}"
+                           " a check, pay with M-Pesa.",
+            "url": base_url() + request.path,
+        }
     if page:
         head.update(
             title=f"{fill(page.title)} – {app_name}",
@@ -207,16 +217,17 @@ def structured_data(page):
 
 def _content_view(page):
     def view():
+        # Visible prices follow the visitor (KES after the /local link); titles and structured data stay USD.
+        currency = local.visitor_currency()
         example_words = 25000
-        pack = next(p for p in pricing.PLANS if p.id == "pack10")
         example_checks = pricing.checks_for_words(example_words)
         return render_template(
             page.template, page=page, services=SERVICES,
-            single_price=pricing.money(pricing.PLANS[0].price),
-            lowest_per_check=pricing.lowest_per_check(),
+            single_price=pricing.single_price(currency),
+            lowest_per_check=pricing.lowest_per_check(currency),
             words_per_check=pricing.WORDS_PER_CHECK,
             example_words=example_words, example_checks=example_checks,
-            example_pack_cost=pricing.money(pack.price / pack.checks * example_checks),
+            example_pack_cost=pricing.pack_cost(example_checks, currency),
         )
     view.__name__ = page.endpoint.split(".", 1)[1]
     return view

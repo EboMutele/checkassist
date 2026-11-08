@@ -1,13 +1,29 @@
 """Plans and prices in one place. The pricing page, homepage and tests all read from here.
 
-Change prices by editing PLANS. `ladder_problems()` (enforced by tests/test_pricing.py) catches
-a price list that stops making sense, for example a bigger pack that costs more per check.
+Two price lists: USD for the public site, and KES for people who come through the private /local
+link (and accounts an admin switches to KES). Change prices in PRICES. `ladder_problems()`
+(enforced by tests/test_pricing.py for every currency) catches a price list that stops making sense,
+for example a bigger pack that costs more per check.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import ROUND_HALF_UP, Decimal
 
+CURRENCY_CODE = "USD"       # the public site's currency (search results, structured data)
 CURRENCY = "$"
-CURRENCY_CODE = "USD"      # what Paystack charges in; KES is needed for M-Pesa (change prices too)
+LOCAL_CURRENCY = "KES"      # for the private /local link; Paystack takes M-Pesa only in KES
+
+# symbol, and the lowest sensible price (a typo guard for ladder_problems)
+CURRENCIES = {
+    "USD": ("$", Decimal("1")),
+    "KES": ("KSh\u00a0", Decimal("100")),
+}
+
+# KES: the USD prices at about KSh 129 to the dollar (Feb 2026: 128.6), rounded, with the same
+# 20/30/40% savings ladder. Kept at parity on purpose, so the /local link isn't a discount if it spreads.
+PRICES = {
+    "USD": {"single": "4.99", "pack10": "39.99", "pack20": "69.99", "monthly": "240"},
+    "KES": {"single": "650", "pack10": "5200", "pack20": "9100", "monthly": "31200"},
+}
 WORDS_PER_CHECK = 10000     # one check covers a document up to this many words
 PACK_VALID_MONTHS = 12      # packs: checks stay valid this long
 MIN_STEP_POINTS = 5         # each bigger option must save at least this many more % per check
@@ -23,13 +39,14 @@ class Plan:
     price: Decimal
     kind: str            # "single", "pack" or "monthly"
     blurb: str
+    currency: str = CURRENCY_CODE
 
     @property
     def per_check(self) -> Decimal:
         return (self.price / self.checks).quantize(CENT, ROUND_HALF_UP)
 
 
-PLANS = (
+_BASE = (
     Plan("single", "Single check", 1, Decimal("4.99"), "single",
          "One document, whenever you need it."),
     Plan("pack10", "10 checks", 10, Decimal("39.99"), "pack",
@@ -41,12 +58,22 @@ PLANS = (
 )
 
 
-def money(amount: Decimal) -> str:
-    """$4.99, $240 (no .00 on whole amounts)."""
+def plans(currency=CURRENCY_CODE):
+    """The plans priced in `currency`."""
+    table = PRICES[currency]
+    return tuple(replace(p, price=Decimal(table[p.id]), currency=currency) for p in _BASE)
+
+
+PLANS = plans(CURRENCY_CODE)
+
+
+def money(amount: Decimal, currency=CURRENCY_CODE) -> str:
+    """$4.99, $240, KSh 5,200 (no .00 on whole amounts)."""
+    symbol = CURRENCIES[currency][0]
     amount = Decimal(amount).quantize(CENT, ROUND_HALF_UP)
     if amount == amount.to_integral_value():
-        return f"{CURRENCY}{int(amount):,}"
-    return f"{CURRENCY}{amount:,.2f}"
+        return f"{symbol}{int(amount):,}"
+    return f"{symbol}{amount:,.2f}"
 
 
 def savings_pct(plan: Plan, plans=PLANS) -> int:
@@ -79,21 +106,33 @@ def ladder_problems(plans=PLANS):
     if monthly and min(plans, key=lambda p: p.price / p.checks) is not monthly[0]:
         problems.append("The monthly plan should be the cheapest per check: it's the only one that asks for a commitment.")
     for p in plans:
-        if p.price < 1:
-            problems.append(f"{p.name} is priced below $1.")
+        floor = CURRENCIES[p.currency][1]
+        if p.price < floor:
+            problems.append(f"{p.name} is priced below {money(floor, p.currency)}.")
     return problems
 
 
-def plans_for_display(plans=PLANS):
+def plans_for_display(currency=CURRENCY_CODE):
+    priced = plans(currency)
     out = []
-    for p in plans:
+    for p in priced:
         out.append({
-            "id": p.id, "name": p.name, "checks": p.checks, "kind": p.kind, "blurb": p.blurb,
-            "price": money(p.price), "per_check": money(p.per_check), "savings": savings_pct(p, plans),
-            "period": "/month" if p.kind == "monthly" else "",
+            "id": p.id, "name": p.name, "checks": p.checks, "kind": p.kind, "blurb": p.blurb, "currency": currency,
+            "price": money(p.price, currency), "per_check": money(p.per_check, currency),
+            "savings": savings_pct(p, priced), "period": "/month" if p.kind == "monthly" else "",
         })
     return out
 
 
-def lowest_per_check(plans=PLANS) -> str:
-    return money(min(p.per_check for p in plans))
+def single_price(currency=CURRENCY_CODE) -> str:
+    return money(plans(currency)[0].price, currency)
+
+
+def lowest_per_check(currency=CURRENCY_CODE) -> str:
+    return money(min(p.per_check for p in plans(currency)), currency)
+
+
+def pack_cost(checks, currency=CURRENCY_CODE, pack_id="pack10") -> str:
+    """What `checks` checks cost at a pack's per-check price, e.g. for 'a 25,000-word dissertation costs…'."""
+    pack = next(p for p in plans(currency) if p.id == pack_id)
+    return money(pack.price / pack.checks * checks, currency)
