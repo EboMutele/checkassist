@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
-    APP_ENV=production DATABASE_PATH=/data/checkassist.sqlite3 UPLOAD_DIR=/data/uploads
+    APP_ENV=production DATABASE_PATH=/data/nerdaccess.sqlite3 UPLOAD_DIR=/data/uploads
 
 WORKDIR /srv
 COPY requirements.txt .

@@ -101,7 +101,7 @@ def view(post):
     d["date"] = _date_label(post["published_at"] or post["updated_at"])
     d["state"] = state(post)
     d["description"] = excerpt_for(post)
-    d["author_name"] = post["author_name"] if "author_name" in post.keys() and post["author_name"] else "CheckAssist team"
+    d["author_name"] = post["author_name"] if "author_name" in post.keys() and post["author_name"] else f"{current_app.config['APP_NAME']} team"
     d["author_initials"] = initials(d["author_name"])
     if post["cover"]:
         d["cover_url"] = media_url(post["cover"])
@@ -211,7 +211,7 @@ def index():
     path = "/blog" if page == 1 else f"/blog?page={page}"
     seo.describe(
         "Blog" if page == 1 else f"Blog, page {page}",
-        "Practical writing advice from the reviewers at CheckAssist: essays, citations, dissertations, "
+        f"Practical writing advice from the reviewers at {current_app.config['APP_NAME']}: essays, citations, dissertations, "
         "applications and getting your work ready to hand in.",
         path, indexable=total > 0, feed=True,
     )

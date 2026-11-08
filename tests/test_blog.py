@@ -179,7 +179,7 @@ def test_published_post_is_public_with_article_metadata(app, client, admin):
     resp = client.get("/blog/how-to-cite-a-website")
     assert resp.status_code == 200 and "X-Robots-Tag" not in resp.headers
     h = parse(resp)
-    assert h.title == "How to cite a website – CheckAssist"
+    assert h.title == "How to cite a website – NerdAccess"
     assert h.meta["description"] == "Cite websites properly in APA, MLA and Harvard."
     assert h.links["canonical"] == ["https://example.test/blog/how-to-cite-a-website"]
     assert h.meta["og:type"] == "article" and "article:published_time" in h.meta

@@ -366,5 +366,5 @@ def test_signup_free_checks_setting(tmp_path):
 def test_paystack_create_plan_command(pay_app, fake):
     result = pay_app.test_cli_runner().invoke(args=["paystack-create-plan"])
     assert "PAYSTACK_MONTHLY_PLAN_CODE=PLN_monthly" in result.output
-    assert fake.calls[-1]["payload"] == {"name": "CheckAssist Monthly (80 checks, USD)", "interval": "monthly",
+    assert fake.calls[-1]["payload"] == {"name": "NerdAccess Monthly (80 checks, USD)", "interval": "monthly",
                                          "amount": 24000, "currency": "USD"}
