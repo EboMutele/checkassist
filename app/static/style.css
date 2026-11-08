@@ -605,6 +605,8 @@ input[type="file"] { font: inherit; font-size: .9375rem; max-width: 100%; }
 .queue-stats { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: .9375rem; }
 .search { display: flex; gap: 8px; width: 100%; max-width: 400px; }
 .search input { flex: 1; min-width: 0; }
+.messages-search { margin: 0 0 16px; }
+.message-body { overflow-wrap: anywhere; }
 .tabs { display: flex; gap: 2px; overflow-x: auto; border-bottom: 1px solid var(--rule-strong); margin-bottom: 14px; scrollbar-width: thin; }
 .tabs a { white-space: nowrap; padding: 10px 12px; color: var(--ink-2); text-decoration: none; border-bottom: 3px solid transparent; margin-bottom: -1px; }
 .tabs a:hover { color: var(--ink); }

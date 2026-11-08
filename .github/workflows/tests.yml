@@ -1,0 +1,42 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    name: Test suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"   # same as the Dockerfile
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      - run: pytest
+
+  docker:
+    # Builds the production image from requirements.txt alone and loads real pages, so a missing
+    # package or a start-up error fails here instead of on the live site.
+    name: Production image starts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t checkassist .
+      - name: Start it and load pages
+        run: |
+          docker run -d --name app -p 8000:8000 \
+            -e SECRET_KEY=ci-smoke-test-not-secret -e BASE_URL=http://localhost:8000 checkassist
+          for i in $(seq 1 30); do curl -fsS -o /dev/null http://localhost:8000/ && break; sleep 1; done
+          for path in / /pricing /essay-review /blog /login /register /robots.txt /sitemap.xml; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:8000$path")
+            echo "$path $code"
+            [ "$code" = "200" ] || exit 1
+          done
+          curl -fsS http://localhost:8000/ | grep -q "Check"
+      - if: failure()
+        run: docker logs app

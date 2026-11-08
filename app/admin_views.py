@@ -321,18 +321,25 @@ def results(sub_id):
         add_event(sub_id, g.user["id"], "results_sent", "updated" if resend else "")
         _set_status(sub, "completed")
         conn.commit()
-        notify(
+        emails = notify(
             [sub["user_id"]],
             f"Your {'updated ' if resend else ''}feedback for “{sub['title']}” is ready.",
             sub_id,
             email_subject=f"Your feedback is ready: {sub['title']}",
             link_endpoint="portal.submission",
         )
+        emailed = "sent" in emails
+        add_event(sub_id, g.user["id"], "email", "Email sent." if emailed else (
+            "No email sent: email isn't set up (SMTP_HOST)." if "not_configured" in emails
+            else "The email failed. See Messages."), internal=True)
+        get_db().commit()
         texted = _text_feedback_ready(sub, resend)
-        flash(
-            "Results sent. The customer has been emailed" + (" and texted." if texted else ". No text was sent; see the timeline."),
-            "success",
-        )
+        flash("Results sent. " + {
+            (True, True): "The customer was emailed and texted.",
+            (True, False): "The customer was emailed. No text went out; see the timeline.",
+            (False, True): "The customer was texted. No email went out; see Messages.",
+            (False, False): "They're on the customer's page, but no email or text went out. See Messages.",
+        }[(emailed, texted)], "success" if emailed or texted else "info")
     else:
         conn.commit()
         flash("Draft saved. The customer can't see it until you send results.", "success")
@@ -348,7 +355,7 @@ def _text_feedback_ready(sub, resend):
     else:
         link = current_app.config["BASE_URL"].rstrip("/") + url_for("portal.submission", sub_id=sub["id"])
         message = feedback_ready_text(current_app.config["APP_NAME"], ref(sub["id"]), link, updated=resend)
-        result = send_sms(phone, message)
+        result = send_sms(phone, message, sub["id"])
         ok = result.ok
         result_note = f"Text sent to {mask_phone(phone)}." if ok else f"Text to {mask_phone(phone)} failed: {result.error}"
     add_event(sub["id"], g.user["id"], "sms", result_note, internal=True)
@@ -418,6 +425,28 @@ def user_detail(user_id):
 
 
 CURRENCY_CHOICES = (("USD", "US dollars"), ("KES", "Kenyan shillings (M-Pesa)"))
+
+
+@bp.route("/messages")
+@admin_required
+def messages():
+    """Every email and text the site tried to send, newest first, and whether it went out."""
+    show = request.args.get("show", "all")
+    q = request.args.get("q", "").strip()[:100]
+    where, args = [], []
+    if show == "problems":
+        where.append("status != 'sent'")
+    if q:
+        where.append("(recipient LIKE ? OR subject LIKE ? OR body LIKE ?)")
+        args += [f"%{q}%"] * 3
+    sql = "SELECT * FROM message_log" + (" WHERE " + " AND ".join(where) if where else "")
+    rows = query(sql + " ORDER BY id DESC LIMIT 200", args)
+    counts = query("SELECT SUM(status = 'sent') AS sent, SUM(status != 'sent') AS problems FROM message_log"
+                   " WHERE created_at >= strftime('%Y-%m-%dT%H:%M:%SZ', 'now', '-7 days')", one=True)
+    cfg = current_app.config
+    return render_template("admin/messages.html", rows=rows, show=show, q=q,
+                           sent=counts["sent"] or 0, problems=counts["problems"] or 0,
+                           email_ready=bool(cfg.get("SMTP_HOST")), sms_ready=bool(cfg.get("SMS_PROVIDER")))
 
 
 @bp.route("/users/<int:user_id>/currency", methods=("POST",))

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Messages{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>Messages</h1>
+    <p class="muted">Every email and text the site has tried to send in the last 90 days. Last 7 days: {{ sent }} sent{% if problems %}, <strong>{{ problems }} not sent</strong>{% endif %}.</p>
+  </div>
+</header>
+
+{% if not email_ready %}
+  <p class="callout callout-warn">Email isn't set up, so customers get no emails: set the <code>SMTP_*</code> settings. Until then, messages below show as “Not set up” so you can see what they would have said.</p>
+{% endif %}
+{% if not sms_ready %}
+  <p class="callout callout-warn">Texts are switched off: set <code>SMS_PROVIDER</code> and its keys. “Feedback ready” texts show below as “Not set up” until then.</p>
+{% endif %}
+
+<nav class="tabs" aria-label="Filter messages">
+  <a href="{{ url_for('admin.messages', q=q or None) }}" {% if show != 'problems' %}aria-current="page"{% endif %}>All</a>
+  <a href="{{ url_for('admin.messages', show='problems', q=q or None) }}" {% if show == 'problems' %}aria-current="page"{% endif %}>Not sent</a>
+</nav>
+<form method="get" class="search messages-search" role="search">
+  {% if show == 'problems' %}<input type="hidden" name="show" value="problems">{% endif %}
+  <label class="visually-hidden" for="msg-q">Search messages</label>
+  <input id="msg-q" type="search" name="q" value="{{ q }}" placeholder="Email, phone number or words">
+  <button type="submit" class="btn btn-quiet">Search</button>
+</form>
+
+{% if rows %}
+  <table class="queue">
+    <thead><tr><th scope="col">When</th><th scope="col">Type</th><th scope="col">To</th><th scope="col">Message</th><th scope="col">Result</th></tr></thead>
+    <tbody>
+      {% for m in rows %}
+        <tr>
+          <td data-label="When"><time datetime="{{ m.created_at }}" data-local="datetime">{{ m.created_at|human_date }}</time></td>
+          <td data-label="Type">{{ 'Email' if m.channel == 'email' else 'Text' }}</td>
+          <td data-label="To"><span class="small">{{ m.recipient }}</span></td>
+          <td data-label="Message">
+            {% if m.subject %}<strong>{{ m.subject }}</strong><br>{% endif %}
+            <span class="muted small message-body">{{ m.body|truncate(220) }}</span>
+            {% if m.submission_id %}<br><a class="small" href="{{ url_for('admin.submission', sub_id=m.submission_id) }}">{{ m.submission_id|ref }}</a>{% endif %}
+          </td>
+          <td data-label="Result">
+            {% if m.status == 'sent' %}<span class="pill pill-good">Sent</span>
+            {% elif m.status == 'not_configured' %}<span class="pill pill-neutral">Not set up</span>
+            {% else %}<span class="pill pill-bad">Failed</span>{% endif %}
+            {% if m.error and m.status == 'failed' %}<span class="muted small">{{ m.error }}</span>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p class="empty-inline">{{ 'Nothing matches.' if q or show == 'problems' else 'No emails or texts yet.' }}</p>
+{% endif %}
+{% endblock %}
