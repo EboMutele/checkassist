@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from urllib.parse import urlsplit
 from xml.sax.saxutils import escape
 
-from flask import (Blueprint, Response, current_app, has_request_context, redirect, render_template, request,
+from flask import (Blueprint, Response, current_app, g, has_request_context, redirect, render_template, request,
                    send_from_directory)
 
 from . import local, pricing
@@ -141,8 +141,33 @@ def fill(text):
     )
 
 
+def describe(title, description, path, *, image=None, og_type="website", structured=None, indexable=True,
+             published=None, modified=None, feed=False):
+    """For pages that aren't in PAGES because their content lives in the database (blog posts and the
+    blog index): the view calls this before rendering. Unlike PAGES, it can say the page shouldn't be
+    indexed (an empty blog, a later page of the list)."""
+    g.seo_page = {
+        "title": f"{title} – {current_app.config['APP_NAME']}", "description": description,
+        "canonical": base_url() + path, "image": image, "og_type": og_type, "structured_data": structured,
+        "indexable": indexable, "published": published, "modified": modified, "feed": feed,
+    }
+
+
 def head_for(endpoint):
     """Everything base.html needs for <head>. Pages not in PAGES get noindex and no canonical."""
+    dynamic = g.get("seo_page") if has_request_context() else None
+    if dynamic:
+        head = {
+            "page": True, "indexable": dynamic["indexable"] and indexing_allowed(),
+            "site_name": current_app.config["APP_NAME"],
+            "og_image": dynamic["image"] or base_url() + "/static/og.png",
+            "google_verification": current_app.config["GOOGLE_SITE_VERIFICATION"],
+            "bing_verification": current_app.config["BING_SITE_VERIFICATION"],
+        }
+        head.update(dynamic)
+        if head["structured_data"] is None:
+            head["structured_data"] = {"@context": "https://schema.org", "@graph": [_org()]}
+        return head
     page = page_for(endpoint)
     app_name = current_app.config["APP_NAME"]
     indexable = bool(page) and indexing_allowed()
@@ -277,8 +302,11 @@ def robots():
 
 @bp.route("/sitemap.xml")
 def sitemap():
+    entries = [(p.path, p.updated) for p in PAGES]
+    from .blog import sitemap_entries  # the blog index and every live post
+    entries += sitemap_entries()
     urls = "".join(
-        f"<url><loc>{escape(base_url() + p.path)}</loc><lastmod>{p.updated}</lastmod></url>" for p in PAGES
+        f"<url><loc>{escape(base_url() + path)}</loc><lastmod>{updated}</lastmod></url>" for path, updated in entries
     ) if indexing_allowed() else ""
     body = ('<?xml version="1.0" encoding="UTF-8"?>\n'
             f'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>\n')
@@ -352,9 +380,11 @@ def init_app(app):
                 if request.args.get("v"):
                     resp.cache_control.immutable = True
             return resp
-        if endpoint in ("seo.robots", "seo.sitemap", "seo.favicon"):
+        if endpoint in ("seo.robots", "seo.sitemap", "seo.favicon", "blog.media", "blog.feed"):
             return resp
-        if not (endpoint in BY_ENDPOINT and indexing_allowed() and resp.status_code == 200):
+        dynamic = g.get("seo_page")
+        listed = dynamic["indexable"] if dynamic else endpoint in BY_ENDPOINT
+        if not (listed and indexing_allowed() and resp.status_code == 200):
             resp.headers["X-Robots-Tag"] = "noindex"
         return resp
 

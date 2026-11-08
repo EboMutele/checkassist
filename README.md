@@ -54,6 +54,17 @@ Any host that runs Python with a **persistent disk** works (Render, Railway, Fly
 5. For email, set the `SMTP_*` values (any provider: Postmark, SES, Resend, Mailgun…). Without them, notifications are in-app only.
 6. For texts, set `SMS_PROVIDER` to `africastalking` or `twilio` plus that provider's keys (see `.env.example`), and `DEFAULT_COUNTRY_CODE` if customers will type local numbers. Test with `AT_USERNAME=sandbox` first. Without a provider, sending results still works and the timeline notes that no text went out.
 
+## Blog
+
+Admins write at **Blog** in the admin menu (`/admin/blog`); readers see `/blog`.
+
+- **Writing**: a full-page editor with a cover image, title, subtitle and a formatting toolbar (headings, bold, italics, strikethrough, links, quotes, lists, code, images, dividers). Shortcuts: `##` + space for a heading, `-` for a list, `>` for a quote, `1.` for a numbered list, Ctrl/Cmd+K for a link. Pasting from Word or Google Docs keeps the structure and drops the styling.
+- **Drafts save themselves** a moment after you stop typing. Nothing is public until you press **Publish**. Pick a future publish time to schedule a post instead. Published posts change only when you press **Update**, so half-finished edits never go live. **Preview** shows exactly what readers will see.
+- **Addresses** come from the title. If you change a published post's address, the old one redirects to the new one.
+- **Images** are re-encoded on upload (which also removes location data and other metadata) and saved in three sizes: full width, a smaller one for cards and phones, and a 1200×630 crop used when the post is shared on social media. They're stored under `UPLOAD_DIR/blog`, so back that folder up with the rest of your uploads.
+- **Safe by design**: everything you write is cleaned to a short list of allowed HTML before it's saved, and again before it's shown (`app/richtext.py`), so a paste or a compromised admin account can't put scripts on the public site. Only images uploaded here can appear in posts.
+- **Search**: each post gets its own title, description, canonical URL, share image and BlogPosting structured data. Live posts go into the sitemap; drafts and scheduled posts don't. Readers can follow `/blog/feed.xml` (RSS). The blog link appears in the header, footer and home page once the first post is live.
+
 ## Search engines (SEO)
 
 **What's public.** The home page, pricing, five service pages (`/essay-review`, `/proofreading`, `/citation-check`, `/dissertation-review`, `/personal-statement-review`), `/how-we-review`, and three guides (`/turnitin-similarity-score`, `/ai-detection`, `/chegg-alternative`). The guides answer what students search for around Turnitin, AI detectors and Chegg while saying plainly that this is a human review: not Turnitin, not an AI detector, and not a way around one. `tests/test_seo.py` fails if a public page starts promising otherwise. They're listed in one place, `PAGES` in `app/seo.py`, which sets each page's title, description, canonical URL, share tags, structured data (schema.org Organization, WebSite, Service with prices) and sitemap entry. Prices and the review time in titles and descriptions come from `app/pricing.py` and `REVIEW_MINUTES`, so they can't drift.
