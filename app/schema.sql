@@ -138,3 +138,37 @@ CREATE TABLE IF NOT EXISTS processed_events (
     key         TEXT PRIMARY KEY,
     received_at TEXT NOT NULL
 );
+
+-- Blog (app/blog.py). Bodies are stored as cleaned HTML (app/richtext.py).
+CREATE TABLE IF NOT EXISTS posts (
+    id            INTEGER PRIMARY KEY,
+    slug          TEXT    NOT NULL UNIQUE,
+    title         TEXT    NOT NULL DEFAULT '',
+    subtitle      TEXT    NOT NULL DEFAULT '',
+    body          TEXT    NOT NULL DEFAULT '',
+    excerpt       TEXT    NOT NULL DEFAULT '',   -- search/social description; written from the body when empty
+    cover         TEXT,                           -- blog_media name
+    cover_alt     TEXT    NOT NULL DEFAULT '',
+    status        TEXT    NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
+    author_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    words         INTEGER NOT NULL DEFAULT 0,
+    created_at    TEXT    NOT NULL,
+    updated_at    TEXT    NOT NULL,
+    published_at  TEXT                            -- in the future = scheduled
+);
+CREATE INDEX IF NOT EXISTS idx_posts_live ON posts(status, published_at);
+
+-- Old addresses of posts whose slug changed, so shared links keep working (301).
+CREATE TABLE IF NOT EXISTS post_slugs (
+    slug     TEXT    PRIMARY KEY,
+    post_id  INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS blog_media (
+    id           INTEGER PRIMARY KEY,
+    name         TEXT    NOT NULL UNIQUE,   -- 32 hex; files: name.webp, name-800.webp, name-og.jpg
+    width        INTEGER NOT NULL,
+    height       INTEGER NOT NULL,
+    uploaded_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at   TEXT    NOT NULL
+);

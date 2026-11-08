@@ -141,6 +141,17 @@
   </div>
 </section>
 
+{% if latest_posts %}
+{% from "blog/_macros.html" import post_card %}
+<section class="services more-posts" aria-labelledby="blog-title">
+  <h2 id="blog-title">From the blog</h2>
+  <div class="post-grid">
+    {% for p in latest_posts %}{{ post_card(p) }}{% endfor %}
+  </div>
+  <p><a href="{{ url_for('blog.index') }}">All posts</a></p>
+</section>
+{% endif %}
+
 <section class="closing sheet" aria-labelledby="closing-title">
   <h2 id="closing-title">Hand it in knowing it's ready.</h2>
   <a class="btn btn-primary" href="{{ url_for('auth.register') }}">Upload a paper</a>

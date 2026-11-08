@@ -63,8 +63,9 @@ def own_submission_or_404(sub_id):
 def index():
     if g.user:
         return redirect(home_for(g.user))
+    from .blog import live_posts
     return render_template("index.html", plans=pricing.plans_for_display(local.visitor_currency()),
-                           **_pricing_context())
+                           latest_posts=live_posts(3), **_pricing_context())
 
 
 def _pricing_context():

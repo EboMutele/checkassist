@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf %}
+{% block title %}{{ post.title or 'Untitled draft' }} · Blog{% endblock %}
+{% block body_class %}editor-page{% endblock %}
+{% block head_extra %}<script src="{{ url_for('static', filename='editor.js') }}" defer></script>{% endblock %}
+{% block content %}
+<form method="post" action="{{ url_for('blog_admin.save', post_id=post.id) }}" class="editor" id="post-form"
+      data-editor data-status="{{ post.status }}" data-upload-url="{{ url_for('blog_admin.upload_media') }}">
+  {{ csrf() }}
+  <div class="editor-bar">
+    <a class="editor-back" href="{{ url_for('blog_admin.list_posts') }}">← All posts</a>
+    <p class="editor-status" data-save-status role="status" aria-live="polite">
+      {% if post.state == 'published' %}<span class="pill pill-good">Published</span>
+      {% elif post.state == 'scheduled' %}<span class="pill pill-info">Scheduled</span> for {{ post.date }}
+      {% else %}<span class="pill pill-neutral">Draft</span> <span data-save-text>Saves as you type</span>{% endif %}
+    </p>
+    <div class="editor-actions">
+      <a class="btn btn-quiet btn-small" href="{{ url_for('blog_admin.preview', post_id=post.id) }}" target="_blank" rel="noopener" data-preview>Preview</a>
+      {% if post.status == 'draft' %}
+        <button type="submit" name="action" value="publish" class="btn btn-primary btn-small" data-publish>Publish</button>
+      {% else %}
+        <button type="submit" name="action" value="unpublish" class="btn btn-quiet btn-small" data-confirm="Take this post off the blog? It goes back to drafts.">Unpublish</button>
+        <button type="submit" name="action" value="update" class="btn btn-primary btn-small">Update</button>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="editor-grid">
+    <div class="editor-main">
+      <div class="cover-zone{% if post.cover %} has-image{% endif %}" data-cover>
+        <input type="hidden" name="cover" value="{{ post.cover or '' }}" data-cover-name>
+        <img src="{{ post.cover_url or '' }}" alt="" data-cover-img {% if not post.cover %}hidden{% endif %}>
+        <button type="button" class="cover-add" data-cover-pick>
+          <span class="cover-add-icon" aria-hidden="true">+</span>
+          <span>Add a cover image</span>
+          <span class="cover-add-hint">Wide images work best (5:2). JPG, PNG or WebP, up to 12 MB.</span>
+        </button>
+        <div class="cover-tools">
+          <button type="button" class="btn btn-quiet btn-small" data-cover-pick>Change</button>
+          <button type="button" class="btn btn-quiet btn-small" data-cover-remove>Remove</button>
+        </div>
+        <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden data-cover-file>
+      </div>
+      <label class="cover-alt" data-cover-alt {% if not post.cover %}hidden{% endif %}>
+        <span class="visually-hidden">Cover image description</span>
+        <input type="text" name="cover_alt" value="{{ post.cover_alt }}" maxlength="{{ limits.cover_alt }}" placeholder="Describe the cover image for screen readers (alt text)">
+      </label>
+
+      <label class="visually-hidden" for="post-title">Title</label>
+      <textarea id="post-title" name="title" class="editor-title" rows="1" maxlength="{{ limits.title }}" placeholder="Title" data-autogrow>{{ post.title }}</textarea>
+      <label class="visually-hidden" for="post-dek">Subtitle</label>
+      <textarea id="post-dek" name="subtitle" class="editor-dek" rows="1" maxlength="{{ limits.subtitle }}" placeholder="Add a subtitle (optional)" data-autogrow>{{ post.subtitle }}</textarea>
+
+      <div class="editor-toolbar" role="toolbar" aria-label="Formatting" data-toolbar>
+        <button type="button" data-cmd="p" title="Text" aria-pressed="false">Text</button>
+        <button type="button" data-cmd="h2" title="Heading" aria-pressed="false">H2</button>
+        <button type="button" data-cmd="h3" title="Subheading" aria-pressed="false">H3</button>
+        <span class="tb-sep" aria-hidden="true"></span>
+        <button type="button" data-cmd="bold" title="Bold (Ctrl+B)" aria-pressed="false"><b>B</b></button>
+        <button type="button" data-cmd="italic" title="Italic (Ctrl+I)" aria-pressed="false"><i>I</i></button>
+        <button type="button" data-cmd="strikeThrough" title="Strikethrough" aria-pressed="false"><s>S</s></button>
+        <button type="button" data-cmd="link" title="Link (Ctrl+K)" aria-pressed="false">Link</button>
+        <span class="tb-sep" aria-hidden="true"></span>
+        <button type="button" data-cmd="blockquote" title="Quote" aria-pressed="false">“ ”</button>
+        <button type="button" data-cmd="ul" title="Bulleted list" aria-pressed="false">• List</button>
+        <button type="button" data-cmd="ol" title="Numbered list" aria-pressed="false">1. List</button>
+        <button type="button" data-cmd="pre" title="Code block" aria-pressed="false">{ }</button>
+        <span class="tb-sep" aria-hidden="true"></span>
+        <button type="button" data-cmd="image" title="Image">Image</button>
+        <button type="button" data-cmd="hr" title="Divider">Divider</button>
+      </div>
+      <div class="link-bar" data-link-bar hidden>
+        <label class="visually-hidden" for="link-url">Link address</label>
+        <input id="link-url" type="text" inputmode="url" autocomplete="off" placeholder="Paste or type a link, e.g. https://… or /pricing" data-link-input>
+        <button type="button" class="btn btn-primary btn-small" data-link-apply>Apply</button>
+        <button type="button" class="btn btn-quiet btn-small" data-link-remove>Remove link</button>
+      </div>
+
+      <div class="prose editor-body" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Post body"
+           data-body data-placeholder="Tell your story… Type ## for a heading, - for a list, > for a quote.">{{ post.body|safe }}</div>
+      <textarea name="body" hidden data-body-field>{{ post.body }}</textarea>
+      <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden data-image-file>
+      <p class="editor-hint muted small">Paste from Word or Google Docs keeps headings, lists, bold, italics and links. Images go in with the Image button.</p>
+    </div>
+
+    <aside class="editor-side" aria-label="Post settings">
+      <section class="side-card sheet">
+        <h2>Post settings</h2>
+        <label class="field">
+          <span>Address</span>
+          <span class="slug-field"><span class="slug-prefix">/blog/</span><input type="text" name="slug" value="{{ '' if post.slug.startswith('draft-') else post.slug }}" maxlength="{{ limits.slug }}" data-slug {% if post.status == 'draft' and post.slug.startswith('draft-') %}data-auto="1"{% endif %} placeholder="made-from-the-title"></span>
+          {% if post.status == 'published' %}<span class="hint">Changing it keeps the old address working: it redirects here.</span>{% endif %}
+        </label>
+        <label class="field">
+          <span>Search and social description</span>
+          <textarea name="excerpt" rows="4" maxlength="{{ limits.excerpt }}" placeholder="Leave empty to use the opening lines" data-count="160">{{ post.excerpt }}</textarea>
+          <span class="hint"><span data-count-out>{{ post.excerpt|length }}</span>/160 shows in Google. Aim for one clear sentence on what the reader gets.</span>
+        </label>
+        <label class="field">
+          <span>Author</span>
+          <select name="author_id">
+            {% for a in authors %}<option value="{{ a.id }}" {{ 'selected' if a.id == post.author_id }}>{{ a.name }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="field">
+          <span>{{ 'Publish time' if post.status == 'draft' else 'Published' }}</span>
+          <input type="datetime-local" data-when data-utc="{{ post.published_at or '' }}">
+          <input type="hidden" name="publish_at" data-when-utc>
+          <span class="hint">{% if post.status == 'draft' %}Leave empty to publish now. Pick a future time to schedule it.{% else %}Change it to reschedule; a past time keeps it live.{% endif %}</span>
+        </label>
+        <p class="side-stats muted small" data-stats>{{ post.words }} words · {{ post.minutes }} min read</p>
+      </section>
+      <section class="side-card side-danger">
+        <button type="submit" form="delete-form" class="link-button danger" data-confirm="Delete this post? This can't be undone.">Delete post</button>
+      </section>
+    </aside>
+  </div>
+</form>
+<form id="delete-form" method="post" action="{{ url_for('blog_admin.delete', post_id=post.id) }}">{{ csrf() }}</form>
+{% endblock %}

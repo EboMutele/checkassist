@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "blog/_macros.html" import post_card, cover, byline %}
+{% block body_class %}landing blog{% endblock %}
+{% block content %}
+<header class="blog-head">
+  <div>
+    <p class="guide-kicker">Blog</p>
+    <h1>Notes from the red pen</h1>
+    <p class="lede">Practical writing advice from the people who read your papers: essays, citations, dissertations and applications.</p>
+  </div>
+  <a class="feed-link" href="{{ url_for('blog.feed') }}">RSS feed</a>
+</header>
+
+{% if posts %}
+  {% set rest = posts %}
+  {% if page == 1 %}
+    {% set lead = posts[0] %}{% set rest = posts[1:] %}
+    <article class="post-lead sheet">
+      {{ cover(lead, "post-lead-media", eager=true) }}
+      <div class="post-lead-body">
+        <p class="post-tag">Latest</p>
+        <h2 class="post-lead-title"><a href="{{ lead.url }}">{{ lead.title }}</a></h2>
+        {% if lead.subtitle %}<p class="post-lead-dek">{{ lead.subtitle }}</p>{% else %}<p class="post-lead-dek">{{ lead.description }}</p>{% endif %}
+        {{ byline(lead) }}
+      </div>
+    </article>
+  {% endif %}
+
+  {% if rest %}
+    <h2 class="visually-hidden">More posts</h2>
+    <div class="post-grid">
+      {% for p in rest %}{{ post_card(p) }}{% endfor %}
+    </div>
+  {% endif %}
+
+  {% if pages > 1 %}
+    <nav class="pager" aria-label="Pages">
+      {% if page > 1 %}<a class="btn btn-quiet" href="{{ url_for('blog.index', page=page - 1) if page > 2 else url_for('blog.index') }}" rel="prev">Newer posts</a>{% endif %}
+      <span class="muted">Page {{ page }} of {{ pages }}</span>
+      {% if page < pages %}<a class="btn btn-quiet" href="{{ url_for('blog.index', page=page + 1) }}" rel="next">Older posts</a>{% endif %}
+    </nav>
+  {% endif %}
+{% else %}
+  <div class="empty sheet">
+    <h2>Nothing here yet</h2>
+    <p class="muted">The first posts are on their way.</p>
+  </div>
+{% endif %}
+{% endblock %}

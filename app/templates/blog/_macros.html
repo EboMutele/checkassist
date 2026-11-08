@@ -1,0 +1,32 @@
+{# Post cards for the blog index, the home page and "More from the blog". #}
+{% macro byline(p, small=false) -%}
+<div class="byline{% if small %} byline-small{% endif %}">
+  <span class="avatar" aria-hidden="true">{{ p.author_initials }}</span>
+  <span class="byline-text">
+    <span class="byline-name">{{ p.author_name }}</span>
+    <span class="byline-meta"><time datetime="{{ p.published_at }}">{{ p.date }}</time> · {{ p.minutes }} min read</span>
+  </span>
+</div>
+{%- endmacro %}
+
+{% macro cover(p, cls="post-card-media", eager=false) -%}
+<div class="{{ cls }}">
+  {% if p.cover_url %}
+    <img src="{{ p.cover_small }}" srcset="{{ p.cover_small }} 800w, {{ p.cover_url }} 2000w"
+         sizes="(min-width: 960px) 560px, 100vw" alt="{{ p.cover_alt }}" {% if not eager %}loading="lazy"{% endif %} decoding="async">
+  {% else %}
+    <div class="cover-fallback" aria-hidden="true"><span>{{ p.title[:1] or '·' }}</span></div>
+  {% endif %}
+</div>
+{%- endmacro %}
+
+{% macro post_card(p, heading="h3") -%}
+<article class="post-card">
+  {{ cover(p) }}
+  <div class="post-card-body">
+    <{{ heading }} class="post-card-title"><a href="{{ p.url }}">{{ p.title }}</a></{{ heading }}>
+    <p class="post-card-excerpt">{{ p.description }}</p>
+    {{ byline(p, small=true) }}
+  </div>
+</article>
+{%- endmacro %}

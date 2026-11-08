@@ -7,7 +7,7 @@
   <title>{{ seo.title }}</title>
   <meta name="description" content="{{ seo.description }}">
   <link rel="canonical" href="{{ seo.canonical }}">
-  <meta property="og:type" content="website">
+  <meta property="og:type" content="{{ seo.og_type or 'website' }}">
   <meta property="og:site_name" content="{{ seo.site_name }}">
   <meta property="og:title" content="{{ seo.title }}">
   <meta property="og:description" content="{{ seo.description }}">
@@ -15,8 +15,11 @@
   <meta property="og:image" content="{{ seo.og_image }}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="{{ seo.site_name }}: a paper marked up in red pen by a reviewer">
+  {% if not seo.image %}<meta property="og:image:alt" content="{{ seo.site_name }}: a paper marked up in red pen by a reviewer">{% endif %}
   <meta name="twitter:card" content="summary_large_image">
+  {% if seo.published %}<meta property="article:published_time" content="{{ seo.published }}">{% endif %}
+  {% if seo.modified %}<meta property="article:modified_time" content="{{ seo.modified }}">{% endif %}
+  {% if seo.feed %}<link rel="alternate" type="application/rss+xml" title="{{ seo.site_name }} blog" href="{{ url_for('blog.feed', _external=False) }}">{% endif %}
   <script type="application/ld+json">{{ seo.structured_data|tojson }}</script>
   {% else %}
   <title>{% block title %}{% endblock %}{% if self.title() %} – {% endif %}{{ app_name }}</title>
@@ -45,6 +48,7 @@
   <link rel="preload" href="{{ url_for('static', filename='fonts/instrument-sans.woff') }}" as="font" type="font/woff" crossorigin>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+  {% block head_extra %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}" data-server-now="{{ server_now }}">
   <a class="skip-link" href="#main">Skip to content</a>
@@ -57,6 +61,7 @@
             <a href="{{ url_for('admin.queue') }}" {% if request.blueprint == 'admin' and request.endpoint not in ('admin.users', 'admin.user_detail') %}aria-current="page"{% endif %}>Queue</a>
             <a href="{{ url_for('admin.users') }}" {% if request.endpoint in ('admin.users', 'admin.user_detail') %}aria-current="page"{% endif %}>Users</a>
             <a href="{{ url_for('admin.payments') }}" {% if request.endpoint == 'admin.payments' %}aria-current="page"{% endif %}>Payments</a>
+            <a href="{{ url_for('blog_admin.list_posts') }}" {% if request.blueprint == 'blog_admin' %}aria-current="page"{% endif %}>Blog</a>
           {% else %}
             <a href="{{ url_for('portal.dashboard') }}" {% if request.endpoint in ('portal.dashboard', 'portal.submission') %}aria-current="page"{% endif %}>Documents</a>
             <a href="{{ url_for('portal.new_submission') }}" {% if request.endpoint == 'portal.new_submission' %}aria-current="page"{% endif %}>Upload</a>
@@ -74,6 +79,7 @@
           </form>
         {% else %}
           <a href="{{ url_for('portal.index') }}#how" class="nav-optional">How it works</a>
+          {% if blog_live %}<a href="{{ url_for('blog.index') }}" class="nav-optional" {% if request.blueprint == 'blog' %}aria-current="page"{% endif %}>Blog</a>{% endif %}
           <a href="{{ url_for('portal.pricing_page') }}" {% if request.endpoint == 'portal.pricing_page' %}aria-current="page"{% endif %}>Pricing</a>
           <a href="{{ url_for('auth.login') }}" {% if request.endpoint == 'auth.login' %}aria-current="page"{% endif %}>Log in</a>
           <a href="{{ url_for('auth.register') }}" class="btn btn-small btn-outline">Upload a paper</a>
@@ -119,6 +125,7 @@
         <ul>
           <li><a href="{{ url_for('portal.pricing_page') }}">Pricing</a></li>
           <li><a href="{{ url_for('seo.how_we_review') }}">How we review</a></li>
+          {% if blog_live %}<li><a href="{{ url_for('blog.index') }}">Blog</a></li>{% endif %}
           <li><a href="{{ url_for('portal.index') }}#questions">Questions</a></li>
         </ul>
       </nav>

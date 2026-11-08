@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% from "blog/_macros.html" import post_card, byline %}
+{% from "macros.html" import upload_url with context %}
+{% block title %}{{ post.title }}{% endblock %}
+{% block body_class %}landing blog blog-post{% endblock %}
+{% block head_extra %}<script src="{{ url_for('static', filename='blog.js') }}" defer></script>{% endblock %}
+{% block content %}
+<div class="read-progress" aria-hidden="true"></div>
+
+{% if preview %}
+  <p class="preview-bar" role="status">
+    <strong>Preview</strong>
+    {% if post.state == 'draft' %}This is a draft. Only admins can see it.{% elif post.state == 'scheduled' %}Scheduled for {{ post.date }}. Only admins can see it until then.{% else %}This post is live.{% endif %}
+    <a href="{{ url_for('blog_admin.edit', post_id=post.id) }}">Back to the editor</a>
+  </p>
+{% endif %}
+
+<div class="article-layout{% if toc %} has-toc{% endif %}">
+  {% if toc %}
+    <nav class="toc" aria-labelledby="toc-title">
+      <p id="toc-title" class="toc-title">In this article</p>
+      <ol>
+        {% for id, text in toc %}<li><a href="#{{ id }}" data-toc-link>{{ text }}</a></li>{% endfor %}
+      </ol>
+    </nav>
+  {% endif %}
+
+  <article class="article sheet">
+    {% if post.cover_url %}
+      <figure class="article-cover">
+        <img src="{{ post.cover_url }}" srcset="{{ post.cover_small }} 800w, {{ post.cover_url }} {{ cover.width if cover else 2000 }}w"
+             sizes="(min-width: 800px) 760px, 100vw" alt="{{ post.cover_alt }}"
+             {% if cover %}width="{{ cover.width }}" height="{{ cover.height }}"{% endif %} fetchpriority="high" decoding="async">
+      </figure>
+    {% endif %}
+
+    <header class="article-head">
+      <p class="article-kicker"><a href="{{ url_for('blog.index') }}">Blog</a></p>
+      <h1>{{ post.title or 'Untitled' }}</h1>
+      {% if post.subtitle %}<p class="article-dek">{{ post.subtitle }}</p>{% endif %}
+      <div class="article-meta">
+        {{ byline(post) }}
+        <div class="share" aria-label="Share this post">
+          <a class="share-btn" href="https://x.com/intent/post?text={{ post.title|urlencode }}&amp;url={{ share_url|urlencode }}" target="_blank" rel="noopener">Post on X</a>
+          <a class="share-btn" href="https://www.linkedin.com/sharing/share-offsite/?url={{ share_url|urlencode }}" target="_blank" rel="noopener">LinkedIn</a>
+          <a class="share-btn" href="https://wa.me/?text={{ (post.title ~ ' ' ~ share_url)|urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
+          <button type="button" class="share-btn" data-copy-link="{{ share_url }}">Copy link</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="prose article-body">
+      {{ post.body_html }}
+    </div>
+
+    <footer class="article-foot">
+      {{ byline(post) }}
+      <p class="muted small">Filed in <a href="{{ url_for('blog.index') }}">the {{ app_name }} blog</a>. Found it useful? Share it with someone who's writing right now.</p>
+    </footer>
+  </article>
+</div>
+
+<section class="closing sheet blog-cta" aria-labelledby="cta-title">
+  <h2 id="cta-title">Want a person to read yours before you hand it in?</h2>
+  <p class="muted">A reviewer reads every page and sends notes and a marked-up copy{% if review_minutes %} in about {{ review_minutes|minutes }}{% endif %}.</p>
+  <a class="btn btn-primary" href="{{ upload_url() }}">Upload a document</a>
+</section>
+
+{% if more %}
+  <section class="services more-posts" aria-labelledby="more-title">
+    <h2 id="more-title">More from the blog</h2>
+    <div class="post-grid">
+      {% for p in more %}{{ post_card(p) }}{% endfor %}
+    </div>
+  </section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf %}
+{% block title %}Blog{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>Blog</h1>
+    <p class="muted">{{ counts.published }} published{% if counts.scheduled %}, {{ counts.scheduled }} scheduled{% endif %}, {{ counts.draft }} {{ 'draft' if counts.draft == 1 else 'drafts' }}.
+      {% if counts.published %}<a href="{{ url_for('blog.index') }}">View the blog</a>{% endif %}</p>
+  </div>
+  <form method="post" action="{{ url_for('blog_admin.new_post') }}">
+    {{ csrf() }}
+    <button type="submit" class="btn btn-primary">New post</button>
+  </form>
+</header>
+
+<nav class="tabs" aria-label="Filter posts">
+  {% for key, label in (('all', 'All'), ('draft', 'Drafts'), ('scheduled', 'Scheduled'), ('published', 'Published')) %}
+    <a href="{{ url_for('blog_admin.list_posts', show=key) if key != 'all' else url_for('blog_admin.list_posts') }}" {% if show == key %}aria-current="page"{% endif %}>
+      {{ label }}{% if key != 'all' %} <span class="count count-quiet">{{ counts[key] }}</span>{% endif %}</a>
+  {% endfor %}
+</nav>
+
+{% if posts %}
+  <ul class="post-admin-list">
+    {% for p in posts %}
+      <li class="post-admin-row sheet">
+        <a class="post-admin-thumb" href="{{ url_for('blog_admin.edit', post_id=p.id) }}" tabindex="-1" aria-hidden="true">
+          {% if p.cover_small %}<img src="{{ p.cover_small }}" alt="" loading="lazy">{% else %}<span>{{ (p.title or '·')[:1] }}</span>{% endif %}
+        </a>
+        <div class="post-admin-main">
+          <a class="post-admin-title" href="{{ url_for('blog_admin.edit', post_id=p.id) }}">{{ p.title or 'Untitled draft' }}</a>
+          <p class="post-admin-meta">
+            {% if p.state == 'published' %}<span class="pill pill-good">Published</span> {{ p.date }}
+            {% elif p.state == 'scheduled' %}<span class="pill pill-info">Scheduled</span> for {{ p.date }}
+            {% else %}<span class="pill pill-neutral">Draft</span> edited {{ p.updated_at|time_ago }}{% endif %}
+            · {{ p.minutes }} min read · {{ p.author_name }}
+          </p>
+        </div>
+        <div class="post-admin-actions">
+          {% if p.state == 'published' %}<a class="btn btn-quiet btn-small" href="{{ p.url }}">View</a>{% endif %}
+          <a class="btn btn-quiet btn-small" href="{{ url_for('blog_admin.edit', post_id=p.id) }}">Edit</a>
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <div class="empty sheet">
+    <h2>{{ 'No posts yet' if show == 'all' else 'Nothing here' }}</h2>
+    <p class="muted">Write your first post: it saves as a draft while you type, and nothing goes live until you press Publish.</p>
+  </div>
+{% endif %}
+{% endblock %}
