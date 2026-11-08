@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "macros.html" import upload_url with context %}
+{% block body_class %}landing{% endblock %}
+{# Layout for the public guides. Title, description and sitemap entry come from app/seo.py. #}
+{% block content %}
+<article class="guide">
+  <header class="pricing-head">
+    <p class="guide-kicker">Guide</p>
+    <h1>{% block h1 %}{% endblock %}</h1>
+    <p class="lede">{% block lede %}{% endblock %}</p>
+  </header>
+
+  <div class="standards-body guide-body sheet sheet-pad">
+    {% block body %}{% endblock %}
+  </div>
+
+  <section class="faq" aria-labelledby="faq-title">
+    <h2 id="faq-title">Questions</h2>
+    <div class="faq-list">{% block faq %}{% endblock %}</div>
+  </section>
+
+  <section class="closing sheet" aria-labelledby="closing-title">
+    <h2 id="closing-title">{% block closing %}Want a person to read it before you submit?{% endblock %}</h2>
+    <a class="btn btn-primary" href="{{ upload_url() }}">Upload a document</a>
+    <p class="muted small closing-note">{{ single_price }} a check, or from {{ lowest_per_check }} {{ 'with a pack or plan' if has_monthly else 'with a pack' }}. <a href="{{ url_for('seo.how_we_review') }}">How we review</a></p>
+  </section>
+
+  <p class="guide-note muted small">{% block note %}{% endblock %} Last updated {{ updated_label }}.</p>
+</article>
+{% endblock %}

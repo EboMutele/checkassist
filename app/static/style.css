@@ -358,6 +358,31 @@ input[type="file"] { font: inherit; font-size: .9375rem; max-width: 100%; }
   .service-hero .hero-margin { padding-top: 84px; padding-bottom: 44px; gap: 36px; }
 }
 
+/* ---------- guides ---------- */
+.guide-kicker { margin: 0 0 10px; color: var(--red); font-size: .8125rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.guide-body h2 { font-size: 1.5rem; }
+.guide-body .checklist li strong, .guide-steps strong { color: var(--ink); }
+.guide-steps { list-style: none; counter-reset: step; padding: 0; margin: 0 0 1em; display: grid; gap: 12px; max-width: 42em; }
+.guide-steps li { counter-increment: step; position: relative; padding-left: 40px; color: var(--ink-2); }
+.guide-steps li::before { content: counter(step); position: absolute; left: 0; top: -.05em; font-family: var(--hand); font-weight: 700; font-size: 1.5rem; line-height: 1; color: var(--red); }
+.guide-body .checklist li { color: var(--ink-2); }
+.guide-note { max-width: 46em; margin: -24px 0 56px; }
+.compare { width: 100%; border-collapse: collapse; font-size: .9375rem; margin: 4px 0 8px; }
+.compare th, .compare td { text-align: left; vertical-align: top; padding: 12px 14px; border-bottom: 1px solid var(--rule); }
+.compare thead th { font-family: var(--serif); font-size: 1.125rem; font-weight: 600; border-bottom: 2px solid var(--ink); }
+.compare thead th:last-child { color: var(--red); }
+.compare tbody th { width: 24%; font-weight: 700; color: var(--ink); }
+.compare td { color: var(--ink-2); }
+.compare td:last-child { color: var(--ink); background: var(--red-soft); }
+@media (max-width: 719px) {
+  .compare thead { display: none; }
+  .compare, .compare tbody, .compare tr, .compare th, .compare td { display: block; width: auto; }
+  .compare tr { padding: 12px 0; border-bottom: 1px solid var(--rule); }
+  .compare tbody th { width: auto; padding: 0 0 6px; border: 0; }
+  .compare td { padding: 8px 12px; border: 0; border-radius: 4px; }
+  .compare td::before { content: attr(data-label); display: block; font-size: .75rem; font-weight: 700; color: var(--ink-3); margin-bottom: 2px; }
+}
+
 /* ---------- private Kenya page ---------- */
 .local-tag { display: inline-block; margin: 0 0 18px; padding: 4px 10px; border: 1.5px solid var(--red); border-radius: 999px; color: var(--red); font-size: .8125rem; font-weight: 700; letter-spacing: .01em; }
 .local-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 10px; }
