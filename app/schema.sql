@@ -1,4 +1,4 @@
--- CheckAssist schema (SQLite). Safe to run repeatedly.
+-- NerdAccess schema (SQLite). Safe to run repeatedly.
 
 CREATE TABLE IF NOT EXISTS users (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,

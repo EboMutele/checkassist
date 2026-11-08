@@ -1,4 +1,6 @@
-# CheckAssist
+# NerdAccess
+
+Live at **https://nerdaccess.store**.
 
 Customers upload documents. Your reviewers read them and send back written feedback and marked-up files.
 
@@ -6,8 +8,8 @@ Customers upload documents. Your reviewers read them and send back written feedb
 
 **Customers**
 - Create an account (name, email, mobile number), upload a PDF, Word (.doc/.docx), ODT, RTF or TXT file (up to 25 MB) with instructions
-- Track progress (Submitted → In review → Feedback ready) and answer reviewer questions
-- See when to expect feedback (20 minutes by default), then read it and download reviewed files
+- Track progress (Submitted → In review → Completed) and answer reviewer questions ([the full journey](docs/JOURNEY.md))
+- Watch a live timer while their document is reviewed (about 20 minutes by default), then read the feedback and download reviewed files
 - Get a text and an email the moment feedback is sent; update their mobile number under Account
 
 **Admins / reviewers** (`/admin`)
@@ -48,6 +50,8 @@ GitHub runs the suite on every pull request, and also checks that the production
 
 ## Deploy
 
+**Live setup: one DigitalOcean Droplet with Docker and Caddy (automatic HTTPS). Step by step: [docs/DEPLOY.md](docs/DEPLOY.md).** The notes below apply to any host.
+
 Any host that runs Python with a **persistent disk** works (Render, Railway, Fly.io, a VPS). SQLite and uploads both live on that disk.
 
 1. Set `APP_ENV=production`, a long random `SECRET_KEY`, `BASE_URL`, and `SESSION_COOKIE_SECURE=1`. Set `REVIEW_MINUTES` if your promise differs from 20 minutes.
@@ -79,7 +83,7 @@ Admins write at **Blog** in the admin menu (`/admin/blog`); readers see `/blog`.
 **Going live**
 1. Set `APP_ENV=production` and `BASE_URL` to the real address (canonical links and the sitemap use it). Optionally set `REDIRECT_TO_BASE_URL=1` so `www.` or your host's default address redirect to it.
 2. Add the site to [Google Search Console](https://search.google.com/search-console). A Domain property (verified by DNS) covers every host name; or use the HTML-tag method and put the code in `GOOGLE_SITE_VERIFICATION`.
-3. Submit `https://YOUR-SITE/sitemap.xml` there, and request indexing for the home page and the five service pages.
+3. Submit `https://nerdaccess.store/sitemap.xml` there, and request indexing for the home page and the five service pages.
 4. In Bing Webmaster Tools, import the site from Search Console (Bing also feeds DuckDuckGo and others).
 5. Set `SUPPORT_EMAIL`: a visible contact address helps both trust and Paystack's account review.
 
@@ -107,7 +111,7 @@ Customers buy checks on **Checks** (or from the pricing page) and pay on Paystac
 
 **Set up**
 1. In the Paystack dashboard, copy your secret key into `PAYSTACK_SECRET_KEY` (start with the test key).
-2. Set the webhook URL to `https://YOUR-SITE/billing/webhook` and the callback URL to `https://YOUR-SITE/billing/callback` (the app also sends the callback with each payment).
+2. Set the webhook URL to `https://nerdaccess.store/billing/webhook` and the callback URL to `https://nerdaccess.store/billing/callback` (the app also sends the callback with each payment).
 3. Run `flask --app wsgi paystack-create-plan` once and set `PAYSTACK_MONTHLY_PLAN_CODE` to the code it prints.
 4. Test a pack and the monthly plan with Paystack's test cards, then switch to the live key.
 
@@ -124,7 +128,7 @@ Customers buy checks on **Checks** (or from the pricing page) and pay on Paystac
 
 ## The Kenya link (/local)
 
-`https://YOUR-SITE/local` is a private page for the clients you choose to share it with: local prices in Kenyan shillings, M-Pesa or card through Paystack, and mobile numbers like 0712 345 678 accepted without +254.
+`https://nerdaccess.store/local` is a private page for the clients you choose to share it with: local prices in Kenyan shillings, M-Pesa or card through Paystack, and mobile numbers like 0712 345 678 accepted without +254.
 
 - **Who pays in KES**: anyone who opens the link and then signs up; anyone signed in who opens it and taps "Use shilling prices on my account"; and any account you switch on its admin page ("Pays in"). Everyone else, including search engines, only ever sees USD. The public /pricing page sends local visitors back to /local (or to their Checks page once signed in), so the local price list lives only on the local side.
 - **Kept out of search**: the page is sent with `noindex`, isn't in the sitemap, and isn't linked from the public site. It's deliberately *not* in robots.txt, which anyone can read. It still has a proper WhatsApp/social preview.

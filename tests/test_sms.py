@@ -33,7 +33,7 @@ def test_normalize_phone(raw, cc, expected):
 
 
 def test_feedback_text_fits_one_gsm7_segment():
-    text = feedback_ready_text("CheckAssist", "CA-00012", "https://checkassist.example.com/submissions/12")
+    text = feedback_ready_text("NerdAccess", "CA-00012", "https://checkassist.example.com/submissions/12")
     assert len(text) <= 160 and text.isascii()
     assert "CA-00012" in text and "https://checkassist.example.com/submissions/12" in text
 

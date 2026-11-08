@@ -70,7 +70,7 @@ def test_public_pages_are_indexable_with_unique_titles_and_descriptions(live, cl
         assert h.links["canonical"] == ["https://example.test" + path]
         assert h.meta["og:url"] == "https://example.test" + path
         assert h.meta["og:image"] == "https://example.test/static/og.png"
-        assert h.title.endswith(" – CheckAssist") and len(h.title) <= 62, h.title
+        assert h.title.endswith(" – NerdAccess") and len(h.title) <= 62, h.title
         desc = h.meta["description"]
         assert 100 <= len(desc) <= 165, (path, len(desc), desc)
         assert "{" not in h.title + desc, "unfilled placeholder"

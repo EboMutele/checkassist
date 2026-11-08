@@ -1,4 +1,4 @@
-"""CheckAssist: document upload with manual human review."""
+"""NerdAccess (nerdaccess.store): document upload with manual human review."""
 import os
 from datetime import timedelta
 
@@ -21,7 +21,7 @@ def create_app(test_config=None):
     os.makedirs(app.instance_path, exist_ok=True)
 
     app.config.from_mapping(
-        APP_NAME=os.environ.get("APP_NAME", "CheckAssist"),
+        APP_NAME=os.environ.get("APP_NAME", "NerdAccess"),
         APP_ENV=os.environ.get("APP_ENV", "development"),
         SECRET_KEY=os.environ.get("SECRET_KEY", "dev-only-change-me"),
         DATABASE=os.environ.get("DATABASE_PATH", os.path.join(app.instance_path, "checkassist.sqlite3")),
@@ -32,7 +32,7 @@ def create_app(test_config=None):
         SMTP_PORT=int(os.environ.get("SMTP_PORT", "587")),
         SMTP_USER=os.environ.get("SMTP_USER", ""),
         SMTP_PASSWORD=os.environ.get("SMTP_PASSWORD", ""),
-        SMTP_FROM=os.environ.get("SMTP_FROM", "CheckAssist <no-reply@example.com>"),
+        SMTP_FROM=os.environ.get("SMTP_FROM", "NerdAccess <no-reply@nerdaccess.store>"),
         SMTP_TLS=_bool("SMTP_TLS", True),
         # On by default: with a short review-time promise, reviewers need to hear about uploads at once.
         ADMIN_EMAIL_ALERTS=_bool("ADMIN_EMAIL_ALERTS", True),
@@ -56,6 +56,10 @@ def create_app(test_config=None):
         CSRF_EXEMPT_ENDPOINTS=("billing.webhook",),
         # Promised minutes from upload to feedback. 0 hides the promise everywhere.
         REVIEW_MINUTES=max(0, int(os.environ.get("REVIEW_MINUTES", "20"))),
+        # How many reverse proxies sit in front of the app (Caddy on the DigitalOcean setup = 1). Lets the
+        # app see visitors' real IP addresses and HTTPS. Leave 0 when nothing is in front: otherwise anyone
+        # could fake their IP with a header and get around the login limit.
+        PROXY_COUNT=max(0, int(os.environ.get("PROXY_COUNT", "0") or 0)),
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=_bool("SESSION_COOKIE_SECURE", False),
@@ -76,6 +80,10 @@ def create_app(test_config=None):
         app.config.update(test_config)
     if app.config["ALLOW_INDEXING"] is None:
         app.config["ALLOW_INDEXING"] = app.config["APP_ENV"] == "production"
+    if app.config["PROXY_COUNT"]:
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        n = app.config["PROXY_COUNT"]
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=n, x_proto=n, x_host=n)
 
     if app.config["APP_ENV"] == "production" and app.config["SECRET_KEY"] == "dev-only-change-me":
         raise RuntimeError("Set SECRET_KEY before running in production.")

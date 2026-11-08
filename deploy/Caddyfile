@@ -1,0 +1,14 @@
+# HTTPS for the site, plus www → the bare domain. Caddy fetches and renews the certificate itself
+# as soon as the domain's DNS points at this server.
+{$DOMAIN} {
+	encode zstd gzip
+	request_body {
+		max_size 30MB
+	}
+	reverse_proxy app:8000
+	header -Server
+}
+
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
+}

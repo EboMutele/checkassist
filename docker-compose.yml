@@ -1,0 +1,41 @@
+# Production on one DigitalOcean Droplet: the app behind Caddy, which gets and renews the HTTPS
+# certificate for nerdaccess.store on its own and compresses responses. Steps: docs/DEPLOY.md.
+#
+#   docker compose up -d --build        start or update
+#   docker compose logs -f app          watch the app
+#   docker compose exec app flask --app wsgi create-admin
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_ENV: production
+      PROXY_COUNT: "1"                  # Caddy is in front; see PROXY_COUNT in .env.example
+      DATABASE_PATH: /data/nerdaccess.sqlite3
+      UPLOAD_DIR: /data/uploads
+    volumes:
+      - app-data:/data
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:-nerdaccess.store}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+
+volumes:
+  app-data:      # database and uploaded files: back this up (deploy/backup.sh)
+  caddy-data:    # HTTPS certificates
+  caddy-config:

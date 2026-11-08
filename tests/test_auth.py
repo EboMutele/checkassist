@@ -86,3 +86,42 @@ def test_anonymous_is_sent_to_login(client):
     for url in ("/dashboard", "/admin/", "/submit"):
         r = client.get(url)
         assert r.status_code == 302 and "/login" in r.headers["Location"]
+
+
+def test_behind_a_proxy_one_attacker_cannot_lock_out_everyone(tmp_path):
+    """With PROXY_COUNT=1 (Caddy in front), the login limit is per real visitor IP, not per proxy."""
+    from app import create_app
+    from app.security import login_throttle
+    from conftest import Session
+    login_throttle._failures.clear()
+    app = create_app({"TESTING": True, "SECRET_KEY": "t", "DATABASE": str(tmp_path / "p.db"),
+                      "UPLOAD_DIR": str(tmp_path / "u"), "PROXY_COUNT": 1})
+    with app.app_context():
+        from app.db import create_user
+        create_user("alice@example.com", "Alice", "password123")
+    attacker, victim = Session(app), Session(app)
+    for _ in range(9):
+        attacker.c.post("/login", data={"email": "alice@example.com", "password": "nope", "csrf_token": attacker.token()},
+                        headers={"X-Forwarded-For": "203.0.113.9"})
+    r = victim.c.post("/login", data={"email": "alice@example.com", "password": "password123", "csrf_token": victim.token()},
+                      headers={"X-Forwarded-For": "198.51.100.7"})
+    assert r.status_code == 302  # the real Alice still gets in
+
+
+def test_without_a_proxy_forwarded_headers_are_ignored(tmp_path):
+    """PROXY_COUNT=0: a client can't dodge the login limit by inventing an X-Forwarded-For header."""
+    from app import create_app
+    from app.security import login_throttle
+    from conftest import Session
+    login_throttle._failures.clear()
+    app = create_app({"TESTING": True, "SECRET_KEY": "t", "DATABASE": str(tmp_path / "n.db"), "UPLOAD_DIR": str(tmp_path / "u")})
+    with app.app_context():
+        from app.db import create_user
+        create_user("alice@example.com", "Alice", "password123")
+    s = Session(app)
+    for i in range(9):
+        s.c.post("/login", data={"email": "alice@example.com", "password": "nope", "csrf_token": s.token()},
+                 headers={"X-Forwarded-For": f"203.0.113.{i}"})
+    r = s.c.post("/login", data={"email": "alice@example.com", "password": "password123", "csrf_token": s.token()},
+                 headers={"X-Forwarded-For": "198.51.100.7"})
+    assert r.status_code != 302  # still limited: the fake header changed nothing
