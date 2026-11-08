@@ -62,9 +62,18 @@ def create_app(test_config=None):
         PERMANENT_SESSION_LIFETIME=timedelta(days=14),
         CSRF_ENABLED=True,
         MAIL_OUTBOX=None,
+        # Search engines (app/seo.py). Indexing is on only in production unless ALLOW_INDEXING says otherwise,
+        # so staging copies never compete with the live site.
+        ALLOW_INDEXING=_bool("ALLOW_INDEXING", None),
+        GOOGLE_SITE_VERIFICATION=os.environ.get("GOOGLE_SITE_VERIFICATION", "").strip(),
+        BING_SITE_VERIFICATION=os.environ.get("BING_SITE_VERIFICATION", "").strip(),
+        SUPPORT_EMAIL=os.environ.get("SUPPORT_EMAIL", "").strip(),
+        REDIRECT_TO_BASE_URL=_bool("REDIRECT_TO_BASE_URL", False),
     )
     if test_config:
         app.config.update(test_config)
+    if app.config["ALLOW_INDEXING"] is None:
+        app.config["ALLOW_INDEXING"] = app.config["APP_ENV"] == "production"
 
     if app.config["APP_ENV"] == "production" and app.config["SECRET_KEY"] == "dev-only-change-me":
         raise RuntimeError("Set SECRET_KEY before running in production.")
@@ -72,12 +81,13 @@ def create_app(test_config=None):
     db.init_app(app)
     security.init_app(app)
 
-    from . import admin_views, auth, billing, helpers, sms, user_views
+    from . import admin_views, auth, billing, helpers, seo, sms, user_views
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(user_views.bp)
     app.register_blueprint(admin_views.bp)
     billing.init_app(app)
+    seo.init_app(app)
 
     app.jinja_env.filters.update(
         human_date=helpers.human_date,

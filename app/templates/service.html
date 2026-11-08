@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "macros.html" import upload_url with context %}
+{% block body_class %}landing{% endblock %}
+{# Layout for the public service pages. Each page fills the blocks; title, description and
+   structured data come from app/seo.py so they never drift from the copy. #}
+{% block content %}
+<article class="service">
+  <header class="hero service-hero sheet" aria-labelledby="service-title">
+    <div class="hero-main">
+      <h1 id="service-title">{% block h1 %}{% endblock %}</h1>
+      <p class="lede">{% block lede %}{% endblock %}</p>
+      <p class="service-cta">
+        <a class="btn btn-primary" href="{{ upload_url() }}">{% block cta %}Upload your document{% endblock %}</a>
+        <span class="muted">{{ single_price }} a check, up to {{ '{:,}'.format(words_per_check) }} words. Read by a person.</span>
+      </p>
+    </div>
+    <aside class="hero-margin" aria-label="Example reviewer notes">
+      <p class="margin-label">Example notes</p>
+      {% block notes %}{% endblock %}
+    </aside>
+  </header>
+
+  <section class="service-section" aria-labelledby="checks-title">
+    <h2 id="checks-title">{% block checks_title %}What your reviewer checks{% endblock %}</h2>
+    <dl class="check-list">{% block checks %}{% endblock %}</dl>
+  </section>
+
+  {% block body %}{% endblock %}
+
+  <section class="service-section service-return" aria-labelledby="return-title">
+    <h2 id="return-title">What you get back</h2>
+    <ul class="checklist">
+      <li>Short notes that put the most important fix first</li>
+      <li>Your own file, marked up line by line</li>
+      <li>A text and an email when it's ready{% if review_minutes %}, usually about {{ review_minutes|minutes }} after you upload{% endif %}</li>
+      <li>The chance to ask your reviewer about any note, free</li>
+    </ul>
+  </section>
+
+  <section class="faq" aria-labelledby="faq-title">
+    <h2 id="faq-title">Questions</h2>
+    <div class="faq-list">{% block faq %}{% endblock %}</div>
+  </section>
+
+  <nav class="services related" aria-labelledby="related-title">
+    <h2 id="related-title">Also in every check</h2>
+    <ul class="service-links">
+      {% for s in services if s.endpoint != page.endpoint %}
+        <li><a class="service-link sheet" href="{{ url_for(s.endpoint) }}"><strong>{{ s.label }}</strong><span>{{ s.summary }}</span></a></li>
+      {% endfor %}
+    </ul>
+  </nav>
+
+  <section class="closing sheet" aria-labelledby="closing-title">
+    <h2 id="closing-title">{% block closing %}Hand it in knowing it's ready.{% endblock %}</h2>
+    <a class="btn btn-primary" href="{{ upload_url() }}">Upload a document</a>
+    <p class="muted small closing-note">{{ single_price }} a check, or from {{ lowest_per_check }} with a pack or plan. <a href="{{ url_for('portal.pricing_page') }}">See pricing</a></p>
+  </section>
+</article>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "service.html" %}
+{% block h1 %}Fast proofreading by a real person{% endblock %}
+{% block lede %}Grammar checkers catch typos. A reviewer also catches the sentence that says the opposite of what you meant. Upload your document and get every correction marked in your own file{% if review_minutes %}, in about {{ review_minutes|minutes }}{% endif %}.{% endblock %}
+{% block cta %}Upload to proofread{% endblock %}
+
+{% block notes %}
+<p class="hand-note">Comma splice. Make this two sentences.<small>On punctuation</small></p>
+<p class="hand-note">You switch between “analyse” and “analyze”. Pick one.<small>On consistency</small></p>
+<p class="hand-note">“Affect”, not “effect”, here.<small>On word choice</small></p>
+{% endblock %}
+
+{% block checks_title %}What gets corrected{% endblock %}
+{% block checks %}
+<div><dt>Grammar and punctuation</dt><dd>Subject–verb agreement, tense slips, comma splices, run-on sentences, apostrophes and the punctuation around quotes.</dd></div>
+<div><dt>Spelling and consistency</dt><dd>One spelling standard all the way through, UK or US, plus consistent terms, capital letters, numbers and abbreviations.</dd></div>
+<div><dt>Clarity</dt><dd>Sentences that run too long, vague words like “things” and “aspects”, and repeated words, each with a suggested fix.</dd></div>
+<div><dt>Tone</dt><dd>Phrases that read as too casual for academic or professional writing, like “a lot of” or “basically”, flagged with alternatives.</dd></div>
+<div><dt>Patterns worth learning</dt><dd>If you make the same mistake twenty times, we fix it in your copy and tell you once in your notes, so you can catch it yourself next time.</dd></div>
+{% endblock %}
+
+{% block body %}
+<section class="service-section service-prose" aria-labelledby="vs-title">
+  <h2 id="vs-title">Proofreading or editing?</h2>
+  <p>Proofreading fixes the surface: grammar, spelling, punctuation and consistency. Editing questions what's underneath: whether the argument holds, the structure works and the evidence fits. Most services charge for each separately.</p>
+  <p>Every check here includes both. If you only want a proofread, say so in the instructions box and your reviewer will stick to the surface. If you want a full <a href="{{ url_for('seo.essay_review') }}">essay review</a>, you're already covered.</p>
+</section>
+{% endblock %}
+
+{% block faq %}
+<details>
+  <summary>Do you use UK or US English?</summary>
+  <p>Whichever you tell us. If you don't say, we follow the spelling most of your document already uses and make the rest match.</p>
+</details>
+<details>
+  <summary>How is this different from a grammar checker?</summary>
+  <p>Software flags patterns. A reviewer reads for meaning, so they catch the right word in the wrong place, sentences that are grammatical but unclear, and points that contradict each other three pages apart.</p>
+</details>
+<details>
+  <summary>What can I send for proofreading?</summary>
+  <p>Essays, reports, dissertation chapters, research proposals, personal statements and cover letters, as {{ allowed_label }} files up to {{ max_upload_mb }} MB.</p>
+</details>
+<details>
+  <summary>How much does proofreading cost?</summary>
+  <p>One check covers a document up to {{ '{:,}'.format(words_per_check) }} words: {{ single_price }} on its own, or from {{ lowest_per_check }} a check with a pack or the monthly plan. <a href="{{ url_for('portal.pricing_page') }}">See pricing</a>.</p>
+</details>
+{% endblock %}

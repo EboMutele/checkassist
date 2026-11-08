@@ -1,0 +1,45 @@
+{% extends "service.html" %}
+{% block h1 %}Citation check: every claim, every reference{% endblock %}
+{% block lede %}Most citation problems aren't copied work. They're a statistic with no source, a quote with no page number, or a reference list that doesn't match the essay. A reviewer finds them before your marker does.{% endblock %}
+{% block cta %}Check my citations{% endblock %}
+
+{% block notes %}
+<p class="hand-note">“Studies show”: which studies? Cite one.<small>On page 2</small></p>
+<p class="hand-note">Page number needed for this quote.<small>On page 4</small></p>
+<p class="hand-note">Okafor (2021) is cited here but missing from your references.<small>On page 6</small></p>
+{% endblock %}
+
+{% block checks %}
+<div><dt>Claims that need a source</dt><dd>Statistics, dates, definitions and phrases like “research shows” or “historians agree”. Anything your reader would ask “says who?” about.</dd></div>
+<div><dt>Quotes and paraphrases</dt><dd>Direct quotes need a page or paragraph number in most styles. Close paraphrases need a citation even without quotation marks.</dd></div>
+<div><dt>Citations against your reference list</dt><dd>Every in-text citation should appear in your list, with the same spelling and year, and every entry in the list should be cited somewhere.</dd></div>
+<div><dt>Style</dt><dd>Author names, dates, italics, punctuation and order, checked against the style you name: APA 7, MLA 9, Harvard or Chicago.</dd></div>
+<div><dt>Entries that look wrong</dt><dd>References with missing details, or that we can't trace, flagged so you can check them against the source before you submit.</dd></div>
+{% endblock %}
+
+{% block body %}
+<section class="service-section service-prose" aria-labelledby="plag-title">
+  <h2 id="plag-title">Is this a plagiarism check?</h2>
+  <p>No. We don't compare your paper against a database, and we don't produce a similarity or AI-detection score. A check here is a person reading your work.</p>
+  <p>What we do catch is the citation gaps that most often lead to accidental plagiarism: ideas taken from a source without credit, quotes without page numbers, and paraphrases that stay too close to the original. Fix those, and every borrowed idea in your paper is credited.</p>
+</section>
+{% endblock %}
+
+{% block faq %}
+<details>
+  <summary>Which citation styles do you check?</summary>
+  <p>APA 7, MLA 9, Harvard and Chicago, plus others if you tell us which guide your course uses. Harvard varies between universities, so if yours has its own guide, paste the key rules in the instructions box.</p>
+</details>
+<details>
+  <summary>Will you fix my reference list?</summary>
+  <p>We mark each formatting error in your copy and show the correct form. Where a detail is missing, like a page range or a DOI, we flag it: you have the source, so you're the one who can look it up.</p>
+</details>
+<details>
+  <summary>Will this make sure my paper passes Turnitin?</summary>
+  <p>No one can promise a similarity score, and we don't run Turnitin. A score isn't the same as plagiarism anyway: markers read the report to see whether matched text is properly quoted and credited. That's exactly what we check.</p>
+</details>
+<details>
+  <summary>Do you only check citations, or the writing too?</summary>
+  <p>Both, if you want. Every check includes notes on argument and clarity and a marked-up copy. If you only want citations looked at, say so when you upload.</p>
+</details>
+{% endblock %}
