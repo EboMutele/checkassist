@@ -58,10 +58,11 @@
       <nav class="nav" aria-label="Main">
         {% if current_user %}
           {% if current_user.role == 'admin' %}
-            <a href="{{ url_for('admin.queue') }}" {% if request.blueprint == 'admin' and request.endpoint not in ('admin.users', 'admin.user_detail') %}aria-current="page"{% endif %}>Queue</a>
+            <a href="{{ url_for('admin.queue') }}" {% if request.endpoint in ('admin.queue', 'admin.submission') %}aria-current="page"{% endif %}>Queue</a>
             <a href="{{ url_for('admin.users') }}" {% if request.endpoint in ('admin.users', 'admin.user_detail') %}aria-current="page"{% endif %}>Users</a>
             <a href="{{ url_for('admin.payments') }}" {% if request.endpoint == 'admin.payments' %}aria-current="page"{% endif %}>Payments</a>
             <a href="{{ url_for('blog_admin.list_posts') }}" {% if request.blueprint == 'blog_admin' %}aria-current="page"{% endif %}>Blog</a>
+            <a href="{{ url_for('admin.messages') }}" {% if request.endpoint == 'admin.messages' %}aria-current="page"{% endif %}>Messages</a>
           {% else %}
             <a href="{{ url_for('portal.dashboard') }}" {% if request.endpoint in ('portal.dashboard', 'portal.submission') %}aria-current="page"{% endif %}>Documents</a>
             <a href="{{ url_for('portal.new_submission') }}" {% if request.endpoint == 'portal.new_submission' %}aria-current="page"{% endif %}>Upload</a>

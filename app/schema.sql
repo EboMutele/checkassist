@@ -172,3 +172,17 @@ CREATE TABLE IF NOT EXISTS blog_media (
     uploaded_by  INTEGER REFERENCES users(id) ON DELETE SET NULL,
     created_at   TEXT    NOT NULL
 );
+
+-- Every email and text the site tries to send, and what happened (Admin > Messages). Kept 90 days.
+CREATE TABLE IF NOT EXISTS message_log (
+    id             INTEGER PRIMARY KEY,
+    channel        TEXT    NOT NULL CHECK (channel IN ('email', 'sms')),
+    recipient      TEXT    NOT NULL,
+    subject        TEXT    NOT NULL DEFAULT '',
+    body           TEXT    NOT NULL DEFAULT '',
+    status         TEXT    NOT NULL CHECK (status IN ('sent', 'failed', 'not_configured')),
+    error          TEXT    NOT NULL DEFAULT '',
+    submission_id  INTEGER REFERENCES submissions(id) ON DELETE SET NULL,
+    created_at     TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_message_log_created ON message_log(created_at);

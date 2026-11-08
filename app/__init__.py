@@ -83,7 +83,7 @@ def create_app(test_config=None):
     db.init_app(app)
     security.init_app(app)
 
-    from . import admin_views, auth, billing, blog, helpers, local, pricing, seo, sms, user_views
+    from . import admin_views, auth, billing, blog, devtools, helpers, local, pricing, seo, sms, user_views
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(user_views.bp)
@@ -92,6 +92,7 @@ def create_app(test_config=None):
     seo.init_app(app)
     local.init_app(app)
     blog.init_app(app)
+    devtools.init_app(app)
 
     app.jinja_env.filters.update(
         human_date=helpers.human_date,

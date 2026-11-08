@@ -110,8 +110,16 @@ def _send_twilio(cfg, to, message):
 PROVIDERS = {"africastalking": _send_africastalking, "twilio": _send_twilio}
 
 
-def send_sms(to, message) -> SmsResult:
-    """Send one text. Never raises: failures come back as SmsResult(ok=False, error=...)."""
+def send_sms(to, message, submission_id=None) -> SmsResult:
+    """Send one text and record the outcome (Admin > Messages). Never raises."""
+    result = _deliver(to, message)
+    from .notify import log_message
+    status = "sent" if result.ok else ("not_configured" if result.error and "switched off" in result.error else "failed")
+    log_message("sms", to, "", message, status, "" if result.ok else result.error, submission_id)
+    return result
+
+
+def _deliver(to, message) -> SmsResult:
     cfg = current_app.config
     outbox = cfg.get("SMS_OUTBOX")
     if outbox is not None:  # tests

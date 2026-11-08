@@ -127,7 +127,7 @@ def test_no_number_means_no_text_and_reviewer_is_told(app, bob, admin):
     r = admin.post(f"/admin/submissions/{sid}/results", {"action": "send", "feedback": "Done"}, follow_redirects=True)
     page = r.get_data(as_text=True)
     assert app.config["SMS_OUTBOX"] == []
-    assert "No text was sent" in page and "no mobile number saved" in page
+    assert "The customer was emailed. No text went out" in page and "no mobile number saved" in page
 
 
 # ---- gateways (HTTP calls faked) -------------------------------------------------

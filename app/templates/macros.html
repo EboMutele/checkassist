@@ -59,7 +59,7 @@
           {% elif e.type == 'assigned' %}{{ who }} set the reviewer to {{ e.body }}.
           {% elif e.type == 'file_added' %}{{ who }} attached {{ e.body }} as a draft.
           {% elif e.type == 'file_removed' %}{{ who }} removed {{ e.body }}.
-          {% elif e.type == 'sms' %}{{ e.body }}
+          {% elif e.type in ('sms', 'email') %}{{ e.body }}
           {% else %}{{ e.type }}{% endif %}
         </span>
         <time datetime="{{ e.created_at }}" title="{{ e.created_at|human_date }}" class="muted small">{{ e.created_at|time_ago }}</time>

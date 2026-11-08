@@ -38,10 +38,13 @@ Customers sign up at `/register`. Admins log in at `/login` and land on the queu
 ## Tests
 
 ```bash
+pip install -r requirements-dev.txt
 pytest
 ```
 
-The suite covers auth, CSRF, access control between customers, upload validation, the draft→send results flow, questions/replies, internal notes and email delivery.
+GitHub runs the suite on every pull request, and also checks that the production image starts. To try the app by hand on a test copy (demo accounts, Paystack test payments, the SMS sandbox and a run-through checklist), see [docs/TESTING.md](docs/TESTING.md). [docs/JOURNEY.md](docs/JOURNEY.md) shows what happens after a customer uploads: statuses, the timer, and who is told what.
+
+**Admin > Messages** lists every email and text the site has tried to send, and whether it went out.
 
 ## Deploy
 
@@ -51,7 +54,7 @@ Any host that runs Python with a **persistent disk** works (Render, Railway, Fly
 2. Point `DATABASE_PATH` and `UPLOAD_DIR` at the persistent disk (the Dockerfile uses `/data`).
 3. Start command: see `Procfile` (gunicorn). Or `docker build -t checkassist . && docker run -p 8000:8000 -v checkassist-data:/data --env-file .env checkassist`.
 4. Run `flask --app wsgi create-admin` once on the server.
-5. For email, set the `SMTP_*` values (any provider: Postmark, SES, Resend, Mailgun…). Without them, notifications are in-app only.
+5. For email, set the `SMTP_*` values (any provider: Postmark, SES, Resend, Mailgun…). Without them, notifications are in-app only, and Admin > Messages shows what wasn't sent.
 6. For texts, set `SMS_PROVIDER` to `africastalking` or `twilio` plus that provider's keys (see `.env.example`), and `DEFAULT_COUNTRY_CODE` if customers will type local numbers. Test with `AT_USERNAME=sandbox` first. Without a provider, sending results still works and the timeline notes that no text went out.
 
 ## Blog
