@@ -12,8 +12,13 @@
 
 {% if not ready %}
   <p class="callout callout-warn">Paystack isn't connected: set PAYSTACK_SECRET_KEY. Until then customers can't buy checks, but you can add checks from a customer's page.</p>
-{% elif not monthly_ready %}
-  <p class="callout callout-warn">The monthly plan isn't on sale yet: run <code>flask --app wsgi paystack-create-plan</code> and set PAYSTACK_MONTHLY_PLAN_CODE.</p>
+{% else %}
+  {% for c in missing_plans %}
+    <p class="callout callout-warn">The {{ c }} monthly plan isn't on sale yet: run <code>flask --app wsgi paystack-create-plan{% if c != 'USD' %} --currency {{ c }}{% endif %}</code> and set PAYSTACK_MONTHLY_PLAN_CODE{% if c != 'USD' %}_{{ c }}{% endif %}.</p>
+  {% endfor %}
+{% endif %}
+{% if local_path %}
+  <p class="muted local-stats">Kenya link <code>{{ local_path }}</code>: {{ via_link }} {{ 'sign-up' if via_link == 1 else 'sign-ups' }}, {{ kes_accounts }} {{ 'account pays' if kes_accounts == 1 else 'accounts pay' }} in KES.</p>
 {% endif %}
 
 {% if rows %}

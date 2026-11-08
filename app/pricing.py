@@ -1,13 +1,29 @@
 """Plans and prices in one place. The pricing page, homepage and tests all read from here.
 
-Change prices by editing PLANS. `ladder_problems()` (enforced by tests/test_pricing.py) catches
-a price list that stops making sense, for example a bigger pack that costs more per check.
+Two price lists: USD for the public site, and KES for the clients you send the private /local link to
+(and accounts an admin switches to KES). Each list picks its own plans from CATALOG and sets their
+prices in PRICES, in display order. `ladder_problems()` (enforced by the tests for every currency)
+catches a price list that stops making sense, for example a bigger pack that costs more per check.
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import ROUND_HALF_UP, Decimal
 
+CURRENCY_CODE = "USD"       # the public site's currency (search results, structured data)
 CURRENCY = "$"
-CURRENCY_CODE = "USD"      # what Paystack charges in; KES is needed for M-Pesa (change prices too)
+LOCAL_CURRENCY = "KES"      # for the private /local link; Paystack takes M-Pesa only in KES
+
+# symbol, and the lowest sensible price (a typo guard for ladder_problems)
+CURRENCIES = {
+    "USD": ("$", Decimal("1")),
+    "KES": ("KSh\u00a0", Decimal("100")),
+}
+
+# KES is a local price list, well below the USD one (KSh 199 is about $1.55), for the clients you share
+# /local with. No monthly plan: renewals need a saved card, and local clients mostly pay by M-Pesa.
+PRICES = {
+    "USD": {"single": "4.99", "pack10": "39.99", "pack20": "69.99", "monthly": "240"},
+    "KES": {"single": "199", "pack5": "900", "pack10": "1700"},
+}
 WORDS_PER_CHECK = 10000     # one check covers a document up to this many words
 PACK_VALID_MONTHS = 12      # packs: checks stay valid this long
 MIN_STEP_POINTS = 5         # each bigger option must save at least this many more % per check
@@ -23,30 +39,48 @@ class Plan:
     price: Decimal
     kind: str            # "single", "pack" or "monthly"
     blurb: str
+    currency: str = CURRENCY_CODE
 
     @property
     def per_check(self) -> Decimal:
         return (self.price / self.checks).quantize(CENT, ROUND_HALF_UP)
 
 
-PLANS = (
-    Plan("single", "Single check", 1, Decimal("4.99"), "single",
+# Every plan any price list can offer; prices come from PRICES.
+CATALOG = {p.id: p for p in (
+    Plan("single", "Single check", 1, Decimal(0), "single",
          "One document, whenever you need it."),
-    Plan("pack10", "10 checks", 10, Decimal("39.99"), "pack",
+    Plan("pack5", "5 checks", 5, Decimal(0), "pack",
+         f"A few papers, or every draft of one. Use them within {PACK_VALID_MONTHS} months."),
+    Plan("pack10", "10 checks", 10, Decimal(0), "pack",
          f"Every draft of a term's essays. Use them within {PACK_VALID_MONTHS} months."),
-    Plan("pack20", "20 checks", 20, Decimal("69.99"), "pack",
+    Plan("pack20", "20 checks", 20, Decimal(0), "pack",
          f"For a full year of coursework or applications. Use them within {PACK_VALID_MONTHS} months."),
-    Plan("monthly", "Monthly", 80, Decimal("240"), "monthly",
+    Plan("monthly", "Monthly", 80, Decimal(0), "monthly",
          "80 checks every month for tutors and teams. Unused checks carry over one month. Cancel anytime."),
-)
+)}
 
 
-def money(amount: Decimal) -> str:
-    """$4.99, $240 (no .00 on whole amounts)."""
+def plans(currency=CURRENCY_CODE):
+    """The plans offered in `currency`, priced, in display order."""
+    return tuple(replace(CATALOG[plan_id], price=Decimal(price), currency=currency)
+                 for plan_id, price in PRICES[currency].items())
+
+
+def has_monthly(currency=CURRENCY_CODE):
+    return any(p.kind == "monthly" for p in plans(currency))
+
+
+PLANS = plans(CURRENCY_CODE)
+
+
+def money(amount: Decimal, currency=CURRENCY_CODE) -> str:
+    """$4.99, $240, KSh 5,200 (no .00 on whole amounts)."""
+    symbol = CURRENCIES[currency][0]
     amount = Decimal(amount).quantize(CENT, ROUND_HALF_UP)
     if amount == amount.to_integral_value():
-        return f"{CURRENCY}{int(amount):,}"
-    return f"{CURRENCY}{amount:,.2f}"
+        return f"{symbol}{int(amount):,}"
+    return f"{symbol}{amount:,.2f}"
 
 
 def savings_pct(plan: Plan, plans=PLANS) -> int:
@@ -79,21 +113,33 @@ def ladder_problems(plans=PLANS):
     if monthly and min(plans, key=lambda p: p.price / p.checks) is not monthly[0]:
         problems.append("The monthly plan should be the cheapest per check: it's the only one that asks for a commitment.")
     for p in plans:
-        if p.price < 1:
-            problems.append(f"{p.name} is priced below $1.")
+        floor = CURRENCIES[p.currency][1]
+        if p.price < floor:
+            problems.append(f"{p.name} is priced below {money(floor, p.currency)}.")
     return problems
 
 
-def plans_for_display(plans=PLANS):
+def plans_for_display(currency=CURRENCY_CODE):
+    priced = plans(currency)
     out = []
-    for p in plans:
+    for p in priced:
         out.append({
-            "id": p.id, "name": p.name, "checks": p.checks, "kind": p.kind, "blurb": p.blurb,
-            "price": money(p.price), "per_check": money(p.per_check), "savings": savings_pct(p, plans),
-            "period": "/month" if p.kind == "monthly" else "",
+            "id": p.id, "name": p.name, "checks": p.checks, "kind": p.kind, "blurb": p.blurb, "currency": currency,
+            "price": money(p.price, currency), "per_check": money(p.per_check, currency),
+            "savings": savings_pct(p, priced), "period": "/month" if p.kind == "monthly" else "",
         })
     return out
 
 
-def lowest_per_check(plans=PLANS) -> str:
-    return money(min(p.per_check for p in plans))
+def single_price(currency=CURRENCY_CODE) -> str:
+    return money(plans(currency)[0].price, currency)
+
+
+def lowest_per_check(currency=CURRENCY_CODE) -> str:
+    return money(min(p.per_check for p in plans(currency)), currency)
+
+
+def pack_cost(checks, currency=CURRENCY_CODE, pack_id="pack10") -> str:
+    """What `checks` checks cost at a pack's per-check price, e.g. for 'a 25,000-word dissertation costs…'."""
+    pack = next(p for p in plans(currency) if p.id == pack_id)
+    return money(pack.price / pack.checks * checks, currency)

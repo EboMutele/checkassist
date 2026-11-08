@@ -124,5 +124,10 @@
       {% endfor %}
     </tbody>
   </table>
+  {% if plans and plans[0].currency == 'KES' %}
+    <p class="rate-note">Prices in Kenyan shillings. Pay with M-Pesa or card.</p>
+  {% else %}
+    <p class="rate-note">Prices in US dollars.</p>
+  {% endif %}
 </div>
 {%- endmacro %}

@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS users (
     email          TEXT    NOT NULL UNIQUE COLLATE NOCASE,
     name           TEXT    NOT NULL,
     phone          TEXT,   -- E.164, e.g. +254712345678; used for "feedback ready" texts
+    currency       TEXT    NOT NULL DEFAULT 'USD',  -- what this account pays in: USD, or KES via the /local link
+    signup_source  TEXT,   -- 'local' when the account was created through the private Kenya link
     password_hash  TEXT    NOT NULL,
     role           TEXT    NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
     is_active      INTEGER NOT NULL DEFAULT 1,

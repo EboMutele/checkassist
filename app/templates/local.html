@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% from "macros.html" import csrf, rate_card, upload_url with context %}
+{# The private Kenya page (app/local.py). Not indexed and not linked from the public site. #}
+{% block title %}For students in Kenya{% endblock %}
+{% block body_class %}landing{% endblock %}
+{% block content %}
+<section class="hero sheet" aria-labelledby="hero-title">
+  <div class="hero-main">
+    <p class="local-tag">For students in Kenya · Pay with M-Pesa</p>
+    <h1 id="hero-title">Check <span class="edit"><del aria-hidden="true">you're</del><ins>your</ins></span> paper before you hand it in.</h1>
+    <p class="lede">A real reviewer reads every page, flags missing citations and weak arguments, and sends back clear notes and a marked-up copy{% if review_minutes %} in about {{ review_minutes|minutes }}{% endif %}. Prices are in shillings, from {{ single_price }} a check.</p>
+
+    {% if can_switch %}
+      <form method="post" action="{{ url_for('local.use_shillings') }}" class="local-cta">
+        {{ csrf() }}
+        <button type="submit" class="btn btn-primary">Use shilling prices on my account</button>
+        <span class="muted">Your checks stay as they are. New purchases are in KSh, with M-Pesa.</span>
+      </form>
+    {% elif already_local %}
+      <p class="local-cta">
+        <a class="btn btn-primary" href="{{ upload_url() }}">Upload a document</a>
+        <a class="btn btn-quiet" href="{{ url_for('billing.page') }}">Buy checks</a>
+      </p>
+    {% elif current_user %}
+      <p class="local-cta"><a class="btn btn-primary" href="{{ url_for('portal.dashboard') }}">Go to the dashboard</a></p>
+    {% else %}
+      <p class="local-cta">
+        <a class="btn btn-primary" href="{{ url_for('auth.register') }}">Create your account</a>
+        <a class="btn btn-quiet" href="{{ url_for('auth.login') }}">Log in</a>
+      </p>
+      <p class="hint">Already have an account? Log in, then open this link again to switch it to shillings.</p>
+    {% endif %}
+
+    <ul class="promises">
+      {% if review_minutes %}<li>Notes back in about {{ review_minutes }} minutes</li>{% endif %}
+      <li>An SMS to your phone when it's ready</li>
+      <li>Read by a person, not software</li>
+      <li>Only you and your reviewer can open it</li>
+    </ul>
+  </div>
+
+  <aside class="hero-margin" aria-label="Example reviewer notes">
+    <p class="margin-label">Example notes</p>
+    <p class="hand-note">Your research question changes in Chapter 3. Pick one.<small>On a research proposal</small></p>
+    <p class="hand-note">“Studies show”: which studies? Cite one.<small>On page 2</small></p>
+  </aside>
+</section>
+
+<section class="how" aria-labelledby="how-title">
+  <h2 id="how-title">How it works</h2>
+  <ol class="steps">
+    <li>
+      <h3>Create your account</h3>
+      <p>With your email and your Safaricom or Airtel number. A number like 0712 345 678 is fine.</p>
+    </li>
+    <li>
+      <h3>Buy checks with M-Pesa</h3>
+      <p>Choose M-Pesa at checkout, enter your number, and approve the prompt on your phone. Cards work too.</p>
+    </li>
+    <li>
+      <h3>Upload and get your notes</h3>
+      <p>{{ allowed_label }}, up to {{ max_upload_mb }} MB. We text and email you when your notes and marked-up copy are ready.</p>
+    </li>
+  </ol>
+</section>
+
+<section class="pricing-teaser" aria-labelledby="price-title">
+  <div class="pricing-teaser-copy">
+    <h2 id="price-title">Prices in shillings</h2>
+    <p>One check covers a document up to {{ '{:,}'.format(words_per_check) }} words: an essay, a report, a proposal or a dissertation chapter. Longer documents use one check per {{ '{:,}'.format(words_per_check) }} words.</p>
+    <p>Buy a single check or a pack, with M-Pesa or a card. Packs last {{ pack_months }} months, and you can use them one document at a time.</p>
+  </div>
+  {{ rate_card(plans, compact=true) }}
+</section>
+
+<section class="faq" aria-labelledby="faq-title">
+  <h2 id="faq-title">Questions</h2>
+  <div class="faq-list">
+    <details>
+      <summary>How do I pay with M-Pesa?</summary>
+      <p>After you choose a pack, Paystack's checkout opens. Pick M-Pesa, enter your number, and approve the prompt that appears on your phone with your M-Pesa PIN. Your checks appear as soon as the payment is confirmed.</p>
+    </details>
+    <details>
+      <summary>Is it the same service as the main site?</summary>
+      <p>Yes: the same reviewers and the same notes and marked-up copy. Only the prices and the ways to pay are different.</p>
+    </details>
+    <details>
+      <summary>Will you write or rewrite my work?</summary>
+      <p>No. We show you what to fix and why, and you make the changes, so the work stays yours. <a href="{{ url_for('seo.how_we_review') }}">How we review</a></p>
+    </details>
+    <details>
+      <summary>What can I send?</summary>
+      <p>Essays, assignments, research proposals, project reports, dissertation and thesis chapters, and cover letters, as {{ allowed_label }} files.</p>
+    </details>
+  </div>
+</section>
+
+<section class="closing sheet" aria-labelledby="closing-title">
+  <h2 id="closing-title">Hand it in knowing it's ready.</h2>
+  {% if current_user %}
+    <a class="btn btn-primary" href="{{ upload_url() if already_local else url_for('portal.dashboard') }}">{{ 'Upload a document' if already_local else 'Go to your account' }}</a>
+  {% else %}
+    <a class="btn btn-primary" href="{{ url_for('auth.register') }}">Create your account</a>
+  {% endif %}
+</section>
+{% endblock %}

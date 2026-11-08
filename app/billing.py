@@ -23,7 +23,7 @@ from decimal import Decimal
 import click
 from flask import Blueprint, abort, current_app, flash, g, redirect, render_template, request, url_for
 
-from . import pricing
+from . import local, pricing
 from .auth import login_required
 from .db import get_db, query, utcnow
 from .helpers import parse_ts
@@ -206,12 +206,31 @@ def subunits(amount: Decimal) -> int:
     return int((Decimal(amount) * 100).to_integral_value())
 
 
-def plan_by_id(plan_id):
-    return next((p for p in pricing.PLANS if p.id == plan_id), None)
+def plan_by_id(plan_id, currency=pricing.CURRENCY_CODE):
+    if currency not in pricing.PRICES:
+        return None
+    return next((p for p in pricing.plans(currency) if p.id == plan_id), None)
 
 
-def monthly_plan():
-    return next((p for p in pricing.PLANS if p.kind == "monthly"), None)
+def monthly_plan(currency=pricing.CURRENCY_CODE):
+    return next((p for p in pricing.plans(currency) if p.kind == "monthly"), None)
+
+
+def monthly_plan_code(currency=pricing.CURRENCY_CODE):
+    """Paystack plan code for the monthly plan in this currency. Only USD has one today; a currency that
+    adds a monthly plan needs its own Paystack plan, saved as PAYSTACK_MONTHLY_PLAN_CODE_<CURRENCY>."""
+    if not pricing.has_monthly(currency):
+        return ""
+    key = "PAYSTACK_MONTHLY_PLAN_CODE" + ("" if currency == pricing.CURRENCY_CODE else f"_{currency}")
+    return current_app.config.get(key, "")
+
+
+def monthly_currencies():
+    return [c for c in pricing.PRICES if pricing.has_monthly(c)]
+
+
+def monthly_plan_codes():
+    return {c for c in (monthly_plan_code(cur) for cur in monthly_currencies()) if c}
 
 
 def payments_ready():
@@ -306,7 +325,7 @@ def fulfill(reference, tx):
         log.error("Payment %s: Paystack says %s %s, expected %s %s; not granting",
                   reference, tx.get("amount"), tx.get("currency"), pay["amount"], pay["currency"])
         return False
-    plan = plan_by_id(pay["plan_id"])
+    plan = plan_by_id(pay["plan_id"], pay["currency"])
     _immediate(conn)
     try:
         cur = conn.execute(
@@ -338,11 +357,13 @@ def _seen(conn, key):
 
 
 def _record_renewal(conn, sub, reference, data):
-    amount = int(data.get("amount") or subunits(monthly_plan().price))
+    currency = (data.get("currency") or pricing.CURRENCY_CODE).upper()
+    plan = monthly_plan(currency) or monthly_plan()
+    amount = int(data.get("amount") or subunits(plan.price))
     cur = conn.execute(
         "INSERT OR IGNORE INTO payments (user_id, reference, plan_id, kind, amount, currency, status, channel, created_at, paid_at)"
         " VALUES (?, ?, ?, 'renewal', ?, ?, 'paid', ?, ?, ?)",
-        (sub["user_id"], reference, sub["plan_id"], amount, (data.get("currency") or pricing.CURRENCY_CODE).upper(),
+        (sub["user_id"], reference, sub["plan_id"], amount, currency,
          data.get("channel"), utcnow(), utcnow()),
     )
     if cur.rowcount != 1:
@@ -353,7 +374,6 @@ def _record_renewal(conn, sub, reference, data):
 def handle_event(event, data):
     """Apply one verified webhook event."""
     conn = get_db()
-    monthly_code = current_app.config["PAYSTACK_MONTHLY_PLAN_CODE"]
 
     if event == "charge.success":
         reference = data.get("reference")
@@ -361,7 +381,7 @@ def handle_event(event, data):
             fulfill(reference, data)
             return
         plan_code = (data.get("plan") or {}).get("plan_code")
-        if reference and monthly_code and plan_code == monthly_code:  # a renewal charge
+        if reference and plan_code and plan_code in monthly_plan_codes():  # a renewal charge
             _immediate(conn)
             try:
                 sub = _subscription_for(conn, data)
@@ -434,8 +454,8 @@ def page():
     history = query("SELECT * FROM ledger WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 50", (uid,))
     return render_template(
         "billing.html", balance=balance(uid), grants=live_grants(uid), history=history,
-        plans=pricing.plans_for_display(), subscription=current_subscription(uid), ready=payments_ready(),
-        words_per_check=pricing.WORDS_PER_CHECK,
+        plans=pricing.plans_for_display(local.currency_for(g.user)), subscription=current_subscription(uid),
+        ready=payments_ready(), words_per_check=pricing.WORDS_PER_CHECK,
     )
 
 
@@ -445,10 +465,11 @@ def checkout(plan_id):
     if g.user["role"] == "admin":
         flash("Reviewer accounts don't buy checks. Use a customer account.", "info")
         return redirect(url_for("billing.page"))
-    plan = plan_by_id(plan_id)
+    currency = local.currency_for(g.user)
+    plan = plan_by_id(plan_id, currency)
     if plan is None:
         abort(404)
-    monthly_code = current_app.config["PAYSTACK_MONTHLY_PLAN_CODE"]
+    monthly_code = monthly_plan_code(currency)
     if plan.kind == "monthly":
         if not monthly_code:
             flash("The monthly plan isn't available yet. Choose a pack for now.", "error")
@@ -461,14 +482,14 @@ def checkout(plan_id):
     cur = conn.execute(
         "INSERT INTO payments (user_id, reference, plan_id, kind, amount, currency, created_at)"
         " VALUES (?, ?, ?, 'checkout', ?, ?, ?)",
-        (g.user["id"], reference, plan.id, subunits(plan.price), pricing.CURRENCY_CODE, utcnow()),
+        (g.user["id"], reference, plan.id, subunits(plan.price), currency, utcnow()),
     )
     conn.commit()
     base = current_app.config["BASE_URL"].rstrip("/")
     payload = {
         "email": g.user["email"],
         "amount": subunits(plan.price),
-        "currency": pricing.CURRENCY_CODE,
+        "currency": currency,
         "reference": reference,
         "callback_url": base + url_for("billing.callback"),
         "metadata": {"payment_id": cur.lastrowid, "user_id": g.user["id"], "plan_id": plan.id,
@@ -511,7 +532,7 @@ def callback():
             return redirect(url_for("billing.page"))
         fulfill(reference, tx)
         pay = query("SELECT * FROM payments WHERE id = ?", (pay["id"],), one=True)
-    plan = plan_by_id(pay["plan_id"])
+    plan = plan_by_id(pay["plan_id"], pay["currency"]) or plan_by_id(pay["plan_id"])
     if pay["status"] == "paid":
         flash(f"Payment received. {plan.name} added: you now have {balance(g.user['id'])} checks.", "success")
     elif pay["status"] == "failed":
@@ -582,11 +603,16 @@ def init_app(app):
     app.register_blueprint(bp)
 
     @app.cli.command("paystack-create-plan")
-    def create_plan_command():
-        """Create the monthly plan on Paystack and print its code for PAYSTACK_MONTHLY_PLAN_CODE."""
-        plan = monthly_plan()
+    @click.option("--currency", type=click.Choice(sorted(c for c in pricing.PRICES if pricing.has_monthly(c)),
+                                                  case_sensitive=False),
+                  default=pricing.CURRENCY_CODE, show_default=True, help="Currency of the monthly plan.")
+    def create_plan_command(currency):
+        """Create the monthly plan on Paystack and print the setting to save its code in."""
+        currency = currency.upper()
+        plan = monthly_plan(currency)
         data = paystack("POST", "/plan", {
-            "name": f"{app.config['APP_NAME']} {plan.name} ({plan.checks} checks)",
-            "interval": "monthly", "amount": subunits(plan.price), "currency": pricing.CURRENCY_CODE,
+            "name": f"{app.config['APP_NAME']} {plan.name} ({plan.checks} checks, {currency})",
+            "interval": "monthly", "amount": subunits(plan.price), "currency": currency,
         })
-        click.echo(f"Created. Set PAYSTACK_MONTHLY_PLAN_CODE={data.get('plan_code')}")
+        key = "PAYSTACK_MONTHLY_PLAN_CODE" + ("" if currency == pricing.CURRENCY_CODE else f"_{currency}")
+        click.echo(f"Created. Set {key}={data.get('plan_code')}")

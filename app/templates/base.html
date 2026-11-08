@@ -20,6 +20,18 @@
   <script type="application/ld+json">{{ seo.structured_data|tojson }}</script>
   {% else %}
   <title>{% block title %}{% endblock %}{% if self.title() %} – {% endif %}{{ app_name }}</title>
+  {% if seo.share %}
+  <meta name="description" content="{{ seo.share.description }}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ seo.site_name }}">
+  <meta property="og:title" content="{{ seo.share.title }}">
+  <meta property="og:description" content="{{ seo.share.description }}">
+  <meta property="og:url" content="{{ seo.share.url }}">
+  <meta property="og:image" content="{{ seo.og_image }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  {% endif %}
   {% endif %}
   {% if not seo.indexable %}<meta name="robots" content="noindex">{% endif %}
   {% if seo.google_verification %}<meta name="google-site-verification" content="{{ seo.google_verification }}">{% endif %}
