@@ -110,13 +110,12 @@ Customers buy checks on **Checks** (or from the pricing page) and pay on Paystac
 
 ## The Kenya link (/local)
 
-`https://YOUR-SITE/local` is a private page for your Kenyan followers and direct clients: prices in Kenyan shillings, M-Pesa or card through Paystack, and mobile numbers like 0712 345 678 accepted without +254.
+`https://YOUR-SITE/local` is a private page for the clients you choose to share it with: local prices in Kenyan shillings, M-Pesa or card through Paystack, and mobile numbers like 0712 345 678 accepted without +254.
 
-- **Who pays in KES**: anyone who opens the link and then signs up; anyone signed in who opens it and taps "Use shilling prices on my account"; and any account you switch on its admin page ("Pays in"). Everyone else sees and pays USD. Visitors who opened the link also see KSh on the pricing and service pages.
+- **Who pays in KES**: anyone who opens the link and then signs up; anyone signed in who opens it and taps "Use shilling prices on my account"; and any account you switch on its admin page ("Pays in"). Everyone else, including search engines, only ever sees USD. The public /pricing page sends local visitors back to /local (or to their Checks page once signed in), so the local price list lives only on the local side.
 - **Kept out of search**: the page is sent with `noindex`, isn't in the sitemap, and isn't linked from the public site. It's deliberately *not* in robots.txt, which anyone can read. It still has a proper WhatsApp/social preview.
-- **Prices**: KSh 650 / 5,200 / 9,100 / 31,200 a month, the USD prices at about KSh 129 to the dollar with the same savings. Keeping them at parity means a forwarded link costs you nothing. If you price Kenya lower, change `PRICES["KES"]` (and the parity test in `tests/test_local.py`), and expect to move the link when it spreads.
+- **Prices**: KSh 199 a check, 5 checks for KSh 900, 10 for KSh 1,700 (`PRICES["KES"]` in `app/pricing.py`). No monthly plan locally. These are well below the USD prices (KSh 199 is about $1.55), and the link is the only gate, so anyone it reaches can pay them, including with a foreign card. Watch Payments for local sign-ups you don't recognise, and move the link if it spreads.
 - **Moving or closing the link**: set `LOCAL_LINK_PATH` (e.g. `/karibu`), or leave it empty to switch the page off. Accounts already on KES keep it.
-- **Monthly plan in KES**: Paystack needs a separate plan per currency. Run `flask --app wsgi paystack-create-plan --currency KES` and set `PAYSTACK_MONTHLY_PLAN_CODE_KES`. Renewals need a card, so the monthly plan is card only; packs take M-Pesa.
 - **Admin**: Payments shows how many people signed up through the link and how many accounts pay in KES, with 30-day totals per currency.
 
 **Admins** can add or remove checks with a reason (for example a manual M-Pesa payment), refund an upload's checks once, and see all payments under **Payments**.

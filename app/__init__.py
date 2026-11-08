@@ -50,7 +50,6 @@ def create_app(test_config=None):
         # Payments (Paystack). Without a secret key, buying is switched off and admins can grant checks.
         PAYSTACK_SECRET_KEY=os.environ.get("PAYSTACK_SECRET_KEY", "").strip(),
         PAYSTACK_MONTHLY_PLAN_CODE=os.environ.get("PAYSTACK_MONTHLY_PLAN_CODE", "").strip(),
-        PAYSTACK_MONTHLY_PLAN_CODE_KES=os.environ.get("PAYSTACK_MONTHLY_PLAN_CODE_KES", "").strip(),
         PAYSTACK_CHANNELS=[c.strip() for c in os.environ.get("PAYSTACK_CHANNELS", "").split(",") if c.strip()],
         CHECKS_REQUIRED=_bool("CHECKS_REQUIRED", True),
         SIGNUP_FREE_CHECKS=max(0, int(os.environ.get("SIGNUP_FREE_CHECKS", "0"))),
@@ -84,7 +83,7 @@ def create_app(test_config=None):
     db.init_app(app)
     security.init_app(app)
 
-    from . import admin_views, auth, billing, helpers, local, seo, sms, user_views
+    from . import admin_views, auth, billing, helpers, local, pricing, seo, sms, user_views
 
     app.register_blueprint(auth.bp)
     app.register_blueprint(user_views.bp)
@@ -126,6 +125,7 @@ def create_app(test_config=None):
             "review_minutes": app.config["REVIEW_MINUTES"],
             "phone_cc": local.phone_country_code(),
             "currency": local.visitor_currency(),
+            "has_monthly": pricing.has_monthly(local.visitor_currency()),
             "server_now": db.utcnow(),
             "checks_balance": checks_balance,
             "checks_required": app.config["CHECKS_REQUIRED"],  # lets live timers correct for a wrong device clock

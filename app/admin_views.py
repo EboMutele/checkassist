@@ -486,7 +486,7 @@ def payments():
     )
     via_link = query("SELECT COUNT(*) AS n FROM users WHERE signup_source = 'local'", one=True)["n"]
     kes_accounts = query("SELECT COUNT(*) AS n FROM users WHERE role = 'user' AND currency = 'KES'", one=True)["n"]
-    missing_plans = [c for c in pricing.PRICES if not billing.monthly_plan_code(c)]
+    missing_plans = [c for c in billing.monthly_currencies() if not billing.monthly_plan_code(c)]
     return render_template("admin/payments.html", rows=rows, totals=totals, plans={p.id: p for p in pricing.PLANS},
                            ready=billing.payments_ready(), missing_plans=missing_plans,
                            local_path=current_app.config["LOCAL_LINK_PATH"], via_link=via_link,

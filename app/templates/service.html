@@ -54,7 +54,7 @@
   <section class="closing sheet" aria-labelledby="closing-title">
     <h2 id="closing-title">{% block closing %}Hand it in knowing it's ready.{% endblock %}</h2>
     <a class="btn btn-primary" href="{{ upload_url() }}">Upload a document</a>
-    <p class="muted small closing-note">{{ single_price }} a check, or from {{ lowest_per_check }} with a pack or plan. <a href="{{ url_for('portal.pricing_page') }}">See pricing</a></p>
+    <p class="muted small closing-note">{{ single_price }} a check, or from {{ lowest_per_check }} {{ 'with a pack or plan' if has_monthly else 'with a pack' }}. <a href="{{ url_for('portal.pricing_page') }}">See pricing</a></p>
   </section>
 </article>
 {% endblock %}

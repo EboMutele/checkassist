@@ -217,13 +217,20 @@ def monthly_plan(currency=pricing.CURRENCY_CODE):
 
 
 def monthly_plan_code(currency=pricing.CURRENCY_CODE):
-    """Paystack plan code for the monthly plan in this currency (each currency needs its own plan)."""
+    """Paystack plan code for the monthly plan in this currency. Only USD has one today; a currency that
+    adds a monthly plan needs its own Paystack plan, saved as PAYSTACK_MONTHLY_PLAN_CODE_<CURRENCY>."""
+    if not pricing.has_monthly(currency):
+        return ""
     key = "PAYSTACK_MONTHLY_PLAN_CODE" + ("" if currency == pricing.CURRENCY_CODE else f"_{currency}")
     return current_app.config.get(key, "")
 
 
+def monthly_currencies():
+    return [c for c in pricing.PRICES if pricing.has_monthly(c)]
+
+
 def monthly_plan_codes():
-    return {c for c in (monthly_plan_code(cur) for cur in pricing.PRICES) if c}
+    return {c for c in (monthly_plan_code(cur) for cur in monthly_currencies()) if c}
 
 
 def payments_ready():
@@ -596,8 +603,9 @@ def init_app(app):
     app.register_blueprint(bp)
 
     @app.cli.command("paystack-create-plan")
-    @click.option("--currency", type=click.Choice(sorted(pricing.PRICES), case_sensitive=False),
-                  default=pricing.CURRENCY_CODE, show_default=True, help="KES for the /local link's monthly plan.")
+    @click.option("--currency", type=click.Choice(sorted(c for c in pricing.PRICES if pricing.has_monthly(c)),
+                                                  case_sensitive=False),
+                  default=pricing.CURRENCY_CODE, show_default=True, help="Currency of the monthly plan.")
     def create_plan_command(currency):
         """Create the monthly plan on Paystack and print the setting to save its code in."""
         currency = currency.upper()

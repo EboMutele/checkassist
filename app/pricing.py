@@ -1,9 +1,9 @@
 """Plans and prices in one place. The pricing page, homepage and tests all read from here.
 
-Two price lists: USD for the public site, and KES for people who come through the private /local
-link (and accounts an admin switches to KES). Change prices in PRICES. `ladder_problems()`
-(enforced by tests/test_pricing.py for every currency) catches a price list that stops making sense,
-for example a bigger pack that costs more per check.
+Two price lists: USD for the public site, and KES for the clients you send the private /local link to
+(and accounts an admin switches to KES). Each list picks its own plans from CATALOG and sets their
+prices in PRICES, in display order. `ladder_problems()` (enforced by the tests for every currency)
+catches a price list that stops making sense, for example a bigger pack that costs more per check.
 """
 from dataclasses import dataclass, replace
 from decimal import ROUND_HALF_UP, Decimal
@@ -18,11 +18,11 @@ CURRENCIES = {
     "KES": ("KSh\u00a0", Decimal("100")),
 }
 
-# KES: the USD prices at about KSh 129 to the dollar (Feb 2026: 128.6), rounded, with the same
-# 20/30/40% savings ladder. Kept at parity on purpose, so the /local link isn't a discount if it spreads.
+# KES is a local price list, well below the USD one (KSh 199 is about $1.55), for the clients you share
+# /local with. No monthly plan: renewals need a saved card, and local clients mostly pay by M-Pesa.
 PRICES = {
     "USD": {"single": "4.99", "pack10": "39.99", "pack20": "69.99", "monthly": "240"},
-    "KES": {"single": "650", "pack10": "5200", "pack20": "9100", "monthly": "31200"},
+    "KES": {"single": "199", "pack5": "900", "pack10": "1700"},
 }
 WORDS_PER_CHECK = 10000     # one check covers a document up to this many words
 PACK_VALID_MONTHS = 12      # packs: checks stay valid this long
@@ -46,22 +46,29 @@ class Plan:
         return (self.price / self.checks).quantize(CENT, ROUND_HALF_UP)
 
 
-_BASE = (
-    Plan("single", "Single check", 1, Decimal("4.99"), "single",
+# Every plan any price list can offer; prices come from PRICES.
+CATALOG = {p.id: p for p in (
+    Plan("single", "Single check", 1, Decimal(0), "single",
          "One document, whenever you need it."),
-    Plan("pack10", "10 checks", 10, Decimal("39.99"), "pack",
+    Plan("pack5", "5 checks", 5, Decimal(0), "pack",
+         f"A few papers, or every draft of one. Use them within {PACK_VALID_MONTHS} months."),
+    Plan("pack10", "10 checks", 10, Decimal(0), "pack",
          f"Every draft of a term's essays. Use them within {PACK_VALID_MONTHS} months."),
-    Plan("pack20", "20 checks", 20, Decimal("69.99"), "pack",
+    Plan("pack20", "20 checks", 20, Decimal(0), "pack",
          f"For a full year of coursework or applications. Use them within {PACK_VALID_MONTHS} months."),
-    Plan("monthly", "Monthly", 80, Decimal("240"), "monthly",
+    Plan("monthly", "Monthly", 80, Decimal(0), "monthly",
          "80 checks every month for tutors and teams. Unused checks carry over one month. Cancel anytime."),
-)
+)}
 
 
 def plans(currency=CURRENCY_CODE):
-    """The plans priced in `currency`."""
-    table = PRICES[currency]
-    return tuple(replace(p, price=Decimal(table[p.id]), currency=currency) for p in _BASE)
+    """The plans offered in `currency`, priced, in display order."""
+    return tuple(replace(CATALOG[plan_id], price=Decimal(price), currency=currency)
+                 for plan_id, price in PRICES[currency].items())
+
+
+def has_monthly(currency=CURRENCY_CODE):
+    return any(p.kind == "monthly" for p in plans(currency))
 
 
 PLANS = plans(CURRENCY_CODE)

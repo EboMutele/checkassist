@@ -1,10 +1,12 @@
 """The private Kenya link (LOCAL_LINK_PATH, /local by default): prices in Kenyan shillings, M-Pesa
 through Paystack, and Kenyan mobile numbers that work without +254.
 
-How it stays private: it isn't in seo.PAGES, so it's served with noindex; it isn't in the sitemap; and
-it isn't in robots.txt either, because robots.txt is public and listing it there would advertise it.
-Nothing on the public site links to it. Share it directly. If it spreads further than you want,
-change LOCAL_LINK_PATH; accounts that already use shillings keep them.
+Local prices are lower than the public ones, and the link is the only gate: anyone who opens it can
+sign up at local prices. So it stays private: it isn't in seo.PAGES, so it's served with noindex; it
+isn't in the sitemap; and it isn't in robots.txt either, because robots.txt is public and listing it
+there would advertise it. Nothing on the public site links to it, and /pricing sends local visitors
+here rather than showing local prices on a public URL. If it spreads further than you want, change
+LOCAL_LINK_PATH; accounts that already use shillings keep them.
 
 Who pays in shillings: anyone who signs up after opening the link, anyone signed in who opens it and
 chooses to switch, and any account an admin switches. Everyone else sees and pays USD.

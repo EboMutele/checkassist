@@ -105,7 +105,7 @@
 <section class="pricing-teaser" id="pricing" aria-labelledby="price-title">
   <div class="pricing-teaser-copy">
     <h2 id="price-title">Pricing</h2>
-    <p>{{ single_price }} for a single check, or from {{ lowest_per_check }} a check with a pack or the monthly plan. One check covers a document up to {{ '{:,}'.format(words_per_check) }} words.</p>
+    <p>{{ single_price }} for a single check, or from {{ lowest_per_check }} a check {{ 'with a pack or the monthly plan' if has_monthly else 'with a pack' }}. One check covers a document up to {{ '{:,}'.format(words_per_check) }} words.</p>
     <p><a href="{{ url_for('portal.pricing_page') }}">See pricing details</a></p>
   </div>
   {{ rate_card(plans, compact=true) }}
@@ -136,7 +136,7 @@
     </details>
     <details>
       <summary>How much does it cost?</summary>
-      <p>{{ single_price }} for a single check, or from {{ lowest_per_check }} a check with a pack or the monthly plan. <a href="{{ url_for('portal.pricing_page') }}">See pricing</a>.</p>
+      <p>{{ single_price }} for a single check, or from {{ lowest_per_check }} a check {{ 'with a pack or the monthly plan' if has_monthly else 'with a pack' }}. <a href="{{ url_for('portal.pricing_page') }}">See pricing</a>.</p>
     </details>
   </div>
 </section>

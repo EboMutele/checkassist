@@ -41,6 +41,6 @@
 </details>
 <details>
   <summary>How much does proofreading cost?</summary>
-  <p>One check covers a document up to {{ '{:,}'.format(words_per_check) }} words: {{ single_price }} on its own, or from {{ lowest_per_check }} a check with a pack or the monthly plan. <a href="{{ url_for('portal.pricing_page') }}">See pricing</a>.</p>
+  <p>One check covers a document up to {{ '{:,}'.format(words_per_check) }} words: {{ single_price }} on its own, or from {{ lowest_per_check }} a check {{ 'with a pack or the monthly plan' if has_monthly else 'with a pack' }}. <a href="{{ url_for('portal.pricing_page') }}">See pricing</a>.</p>
 </details>
 {% endblock %}

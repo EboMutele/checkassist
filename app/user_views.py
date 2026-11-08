@@ -80,6 +80,11 @@ def _pricing_context():
 
 @bp.route("/pricing")
 def pricing_page():
+    if local.visitor_currency() != pricing.CURRENCY_CODE:
+        # Local prices live on the local side only: the private page, or the account's Checks page.
+        if g.user is None and "local.page" in current_app.view_functions:
+            return redirect(url_for("local.page"))
+        return redirect(url_for("billing.page"))
     example_words = 15000
     return render_template(
         "pricing.html", plans=pricing.plans_for_display(local.visitor_currency()), example_words=example_words,

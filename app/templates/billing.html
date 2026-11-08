@@ -25,6 +25,7 @@
     {% if balance %}<p class="sub-actions"><a class="btn btn-primary" href="{{ url_for('portal.new_submission') }}">Upload a paper</a></p>{% endif %}
   </section>
 
+  {% if has_monthly or subscription %}
   <section class="sub-card sheet" aria-labelledby="sub-title">
     <h2 id="sub-title">Monthly plan</h2>
     {% if subscription %}
@@ -54,6 +55,7 @@
       <p class="muted sub-status">Not subscribed. The monthly plan suits tutors and teams who send papers every week.</p>
     {% endif %}
   </section>
+  {% endif %}
 </div>
 
 <section aria-labelledby="buy-title">
