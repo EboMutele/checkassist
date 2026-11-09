@@ -202,3 +202,10 @@ CREATE TABLE IF NOT EXISTS message_log (
     created_at     TEXT    NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_message_log_created ON message_log(created_at);
+
+-- Small site settings that admins change from the site itself (e.g. who gets instant alerts).
+CREATE TABLE IF NOT EXISTS settings (
+    key        TEXT PRIMARY KEY,
+    value      TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);

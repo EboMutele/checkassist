@@ -872,3 +872,17 @@ table.queue { width: 100%; border-collapse: collapse; background: var(--paper); 
 .checks-line form { margin: 0; }
 .admin-checks { margin-bottom: 32px; }
 .admin-checks .history { box-shadow: none; margin-top: 18px; }
+
+/* Admin > Messages: who gets instant alerts */
+.alerts-panel { margin-bottom: 24px; }
+.alerts-panel > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; cursor: pointer; list-style: none; }
+.alerts-panel > summary::-webkit-details-marker { display: none; }
+.alerts-panel > summary::before {
+  content: ""; flex: none; width: 7px; height: 7px; margin: 0 4px 0 2px; border: solid var(--ink-2); border-width: 0 1.5px 1.5px 0;
+  transform: rotate(-45deg); transition: transform .15s;
+}
+.alerts-panel[open] > summary::before { transform: rotate(45deg); }
+.alerts-title { font-family: var(--serif); font-size: 1.25rem; font-weight: 500; letter-spacing: -.015em; }
+.alerts-panel > .hint { margin-top: 10px; }
+.alerts-form { margin-bottom: 0; max-width: 560px; }
+.alerts-form .callout { margin: 10px 0 0; }

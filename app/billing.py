@@ -354,10 +354,13 @@ def fulfill(reference, tx):
             note = plan.name if plan.checks == 1 else f"{plan.checks}-check pack"
             grant(conn, pay["user_id"], plan.checks, "purchase", note, expires, pay["id"])
         conn.commit()
-        return True
     except Exception:
         conn.rollback()
         raise
+    # Only the call that marked it paid gets here, so the webhook and the return page can't both alert.
+    from . import alerts
+    alerts.payment(pay["id"])
+    return True
 
 
 def _seen(conn, key):
@@ -396,6 +399,7 @@ def handle_event(event, data):
         plan_code = (data.get("plan") or {}).get("plan_code")
         if reference and plan_code and plan_code in monthly_plan_codes():  # a renewal charge
             _immediate(conn)
+            pid = None
             try:
                 sub = _subscription_for(conn, data)
                 if sub and _seen(conn, f"charge:{reference}"):
@@ -406,6 +410,9 @@ def handle_event(event, data):
             except Exception:
                 conn.rollback()
                 raise
+            if pid:
+                from . import alerts
+                alerts.payment(pid)
         return
 
     if event == "subscription.create":
@@ -428,6 +435,7 @@ def handle_event(event, data):
     if event == "invoice.update" and (data.get("paid") or data.get("status") == "success"):
         invoice = data.get("invoice_code")
         _immediate(conn)
+        pid = None
         try:
             sub = _subscription_for(conn, data)
             if sub and invoice and _seen(conn, f"invoice:{invoice}"):
@@ -442,6 +450,9 @@ def handle_event(event, data):
         except Exception:
             conn.rollback()
             raise
+        if pid:
+            from . import alerts
+            alerts.payment(pid)
         return
 
     status_for = {"invoice.payment_failed": "attention", "subscription.not_renew": "non-renewing",

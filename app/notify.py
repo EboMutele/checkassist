@@ -49,6 +49,7 @@ def _reply_to():
 
 def send_email(to_addr: str, subject: str, body: str, submission_id=None, html=None) -> str:
     """Send plain text, plus an HTML version when given. Returns "sent", "failed" or "not_configured"."""
+    subject = " ".join((subject or "").split())  # a line break typed into a title must not reach a header
     cfg = current_app.config
     outbox = cfg.get("MAIL_OUTBOX")
     if outbox is not None:  # tests
@@ -184,16 +185,20 @@ def compose_email(subject, name, content, link=""):
     cfg = current_app.config
     app_name = cfg["APP_NAME"]
     home = cfg["BASE_URL"].rstrip("/")
-    intro = [f"Hi {_first_name(name)},", *content.get("intro", [])]
+    greeting = [f"Hi {_first_name(name)},"] if name else []  # alerts to an address, not a person: no greeting
+    intro = [*greeting, *content.get("intro", [])]
     quote = (content.get("quote") or "").strip()
     if len(quote) > 900:
         quote = quote[:900].rsplit(" ", 1)[0] + "…"
-    footer = (f"You get these because you review documents on {app_name}." if content.get("footer") == "reviewer"
-              else f"You're getting this because you asked {app_name} to review a document.")
+    footer = {
+        "reviewer": f"You get these because you review documents on {app_name}.",
+        "alerts": f"You get these because this address is on {app_name}'s alert list (Admin \u2192 Messages).",
+    }.get(content.get("footer"), f"You're getting this because you asked {app_name} to review a document.")
     ctx = {
         "subject": subject, "app_name": app_name, "home_url": home,
         "kicker": content.get("kicker", ""), "heading": content["heading"], "intro": intro,
         "document": content.get("document", ""), "details": content.get("details", []),
+        "document_label": content.get("document_label") or "Document",
         "quote": quote, "quote_by": content.get("quote_by", ""),
         "button": content.get("button") or f"Open {app_name}", "button_url": link,
         "preheader": content.get("preheader") or (content.get("intro") or [content["heading"]])[0],
@@ -201,10 +206,10 @@ def compose_email(subject, name, content, link=""):
     }
     html = render_template("email/message.html", **ctx)
 
-    lines = [intro[0], "", content["heading"], ""]
-    lines += [p for para in intro[1:] for p in (para, "")]
+    lines = [*(f for g in greeting for f in (g, "")), content["heading"], ""]
+    lines += [p for para in intro[len(greeting):] for p in (para, "")]
     if ctx["document"]:
-        lines.append(f"Document: {ctx['document']}")
+        lines.append(f"{ctx['document_label']}: {ctx['document']}")
         lines += [f"{label}: {value}" for label, value in ctx["details"]]
         lines.append("")
     if quote:

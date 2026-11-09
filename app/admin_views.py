@@ -9,7 +9,7 @@ from .helpers import (
     FIRST_SENT_SQL, OPEN_STATUSES, STATUSES, extract_preview, load_timings, ref, status_events_of, timing, word_count,
 )
 from .notify import notify
-from . import attachments, billing, pricing, local
+from . import alerts, attachments, billing, pricing, local
 from .sms import feedback_ready_text, mask_phone, send_sms
 from .storage import get_storage
 from .user_views import add_event, store_file
@@ -465,10 +465,36 @@ def user_detail(user_id):
 CURRENCY_CHOICES = (("USD", "US dollars"), ("KES", "Kenyan shillings (M-Pesa)"))
 
 
-@bp.route("/messages")
+@bp.route("/messages", methods=("GET", "POST"))
 @admin_required
 def messages():
-    """Every email and text the site tried to send, newest first, and whether it went out."""
+    """Every email and text the site tried to send, newest first, and whether it went out. Also where
+    admins say who gets instant alerts for new orders and payments."""
+    typed, status = None, 200
+    if request.method == "POST":
+        typed = {"emails": request.form.get("emails", "")[:2000], "phones": request.form.get("phones", "")[:1000]}
+        emails, error = alerts.parse_emails(typed["emails"])
+        phones, phone_error = alerts.parse_phones(typed["phones"])
+        if error or phone_error:
+            flash(error or phone_error, "error")
+            status = 400
+        else:
+            alerts.save_recipients(emails, phones)
+            if request.form.get("action") != "test":
+                flash("Alerts saved." if emails or phones else "Alerts are off: nobody is on the list.", "success")
+            elif not emails and not phones:
+                flash("Add an email address or a phone number, then send the test.", "error")
+            else:
+                results = alerts.send_test(g.user["name"])
+                sent = [to for to, outcome in results if outcome == "sent"]
+                failed = [f"{to} ({outcome})" for to, outcome in results if outcome != "sent"]
+                if failed:
+                    flash(("Test sent to " + ", ".join(sent) + ". " if sent else "")
+                          + "Not sent: " + "; ".join(failed) + ".", "error")
+                else:
+                    flash("Test sent to " + ", ".join(sent) + ". Check the inbox and phone.", "success")
+            return redirect(url_for("admin.messages"))  # top of the page, where the result is flashed
+    alert_emails, alert_phones = alerts.recipients()
     show = request.args.get("show", "all")
     q = request.args.get("q", "").strip()[:100]
     where, args = [], []
@@ -485,7 +511,10 @@ def messages():
     return render_template("admin/messages.html", rows=rows, show=show, q=q,
                            sent=counts["sent"] or 0, problems=counts["problems"] or 0,
                            email_ready=bool(cfg.get("RESEND_API_KEY") or cfg.get("SMTP_HOST")),
-                           sms_ready=bool(cfg.get("SMS_PROVIDER")))
+                           sms_ready=bool(cfg.get("SMS_PROVIDER")),
+                           alert_emails=alert_emails, alert_phones=alert_phones,
+                           alert_form=typed or {"emails": "\n".join(alert_emails), "phones": "\n".join(alert_phones)},
+                           alert_error=status != 200, reviewer_emails=bool(cfg.get("ADMIN_EMAIL_ALERTS"))), status
 
 
 @bp.route("/users/<int:user_id>/currency", methods=("POST",))

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros.html" import csrf with context %}
 {% block title %}Messages{% endblock %}
 {% block content %}
 <header class="page-head">
@@ -14,6 +15,34 @@
 {% if not sms_ready %}
   <p class="callout callout-warn">Texts are switched off: set <code>SMS_PROVIDER</code> and its keys. “Feedback ready” texts show below as “Not set up” until then.</p>
 {% endif %}
+
+{% set alerts_on = alert_emails or alert_phones %}
+<details class="panel-block alerts-panel" id="alerts" {% if not alerts_on or alert_error %}open{% endif %}>
+  <summary>
+    <span class="alerts-title">Instant alerts</span>
+    {% if alerts_on %}
+      <span class="pill pill-good">On</span>
+      <span class="muted small">{{ alert_emails|length }} {{ 'email' if alert_emails|length == 1 else 'emails' }}, {{ alert_phones|length }} {{ 'phone' if alert_phones|length == 1 else 'phones' }}</span>
+    {% else %}
+      <span class="pill pill-neutral">Off</span>
+    {% endif %}
+  </summary>
+  <p class="hint">An email and a text go out the moment a customer places an order or a payment comes in.</p>
+  <form method="post" class="form alerts-form">
+    {{ csrf() }}
+    <label for="alert-emails">Email alerts to</label>
+    <textarea id="alert-emails" name="emails" rows="3" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="you@example.com">{{ alert_form.emails }}</textarea>
+    <p class="hint">Up to 5, one per line.{% if reviewer_emails %} Reviewers' own accounts already get an email for each new document, so they won't get it twice.{% endif %}</p>
+    <label for="alert-phones">Text alerts to</label>
+    <textarea id="alert-phones" name="phones" rows="3" autocomplete="off" spellcheck="false" placeholder="+254 712 345 678">{{ alert_form.phones }}</textarea>
+    <p class="hint">Up to 5, one per line, with the country code (a number starting 07 or 01 is read as Kenyan).</p>
+    {% if not sms_ready %}<p class="callout callout-warn small">Texts are switched off on the server, so numbers here won't get texts until <code>SMS_PROVIDER</code> is set.</p>{% endif %}
+    <div class="button-row">
+      <button type="submit" name="action" value="save" class="btn btn-primary">Save</button>
+      <button type="submit" name="action" value="test" class="btn btn-quiet">Save and send a test</button>
+    </div>
+  </form>
+</details>
 
 <nav class="tabs" aria-label="Filter messages">
   <a href="{{ url_for('admin.messages', q=q or None) }}" {% if show != 'problems' %}aria-current="page"{% endif %}>All</a>
