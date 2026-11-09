@@ -23,8 +23,9 @@
   {% endif %}
   <form method="post" enctype="multipart/form-data" class="form sheet sheet-pad" data-upload-form>
     {{ csrf() }}
-    <label for="title">Title</label>
-    <input id="title" name="title" required maxlength="200" value="{{ form.title }}" placeholder="e.g. History essay on the 1848 revolutions">
+    <label for="title">Title <span class="muted">(optional)</span></label>
+    <input id="title" name="title" maxlength="200" value="{{ form.title }}" placeholder="e.g. History essay on the 1848 revolutions" aria-describedby="title-hint">
+    <p id="title-hint" class="hint">Leave it blank and we'll use the file name.</p>
 
     <label for="document">Document</label>
     <div class="dropzone" data-dropzone>
@@ -37,11 +38,6 @@
     <label for="instructions">What should the reviewer focus on? <span class="muted">(optional)</span></label>
     <textarea id="instructions" name="instructions" rows="5" maxlength="5000"
               placeholder="e.g. Check my argument holds together and that citations follow APA 7. Word limit is 2,000.">{{ form.instructions }}</textarea>
-
-    <label class="check">
-      <input type="checkbox" name="confirm_rights" value="1" required>
-      <span>I wrote this document or have permission to share it, and I understand a reviewer will read it.</span>
-    </label>
 
     <button type="submit" class="btn btn-primary">Upload document</button>
   </form>
