@@ -88,7 +88,7 @@ def test_signing_up_through_the_link_prices_the_account_in_kes(kes_app):
     s = Session(kes_app)
     s.get("/local")
     form = s.get("/register").get_data(as_text=True)
-    assert f"from KSh{NBSP}199 a check" in form
+    assert "Kenyan shillings" not in form and "KSh" not in form  # no pricing talk on the sign-up form itself
     assert '<option value="KE" data-dial="254"' in form and re.search(r'value="KE"[^>]* selected>', form)
     assert 'data-guess' not in form  # the link says Kenya; the browser's time zone doesn't override it
     _register(s)

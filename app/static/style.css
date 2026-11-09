@@ -629,7 +629,6 @@ input[type="file"] { font: inherit; font-size: .9375rem; max-width: 100%; }
 .local-cta .muted { font-size: .9375rem; flex-basis: 100%; }
 .rate-note { margin: 0; padding: 12px 0 16px; font-size: .8125rem; color: var(--ink-3); border-top: 1px solid var(--rule); }
 .rate-card-compact .rate-note { padding: 10px 0 12px; }
-.callout-local { background: var(--red-soft); color: var(--ink); box-shadow: inset 3px 0 0 var(--red); font-size: .9375rem; }
 
 /* ---------- admin ---------- */
 .currency-form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 4px; }

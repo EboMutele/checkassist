@@ -138,8 +138,7 @@ def register():
             flash("Welcome! Upload your first document whenever you're ready.", "success")
             return redirect(next_url or url_for("portal.dashboard"))
     return render_template("auth/register.html", form=form, via_link=local.came_through_link(),
-                           phone_field=phone_numbers.field(form["phone"], None, request.form.get("phone_country")),
-                           single_price=pricing.single_price(local.visitor_currency()))
+                           phone_field=phone_numbers.field(form["phone"], None, request.form.get("phone_country")))
 
 
 @bp.route("/login", methods=("GET", "POST"))
