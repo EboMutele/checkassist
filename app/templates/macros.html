@@ -18,7 +18,7 @@
     <span class="muted small">{{ f.size|file_size }}, added {{ f.created_at|time_ago }}{% if f.kind == 'result' and not f.visible_to_user %}, not sent yet{% endif %}</span>
   </span>
   <span class="file-actions">
-    {% if show_preview and f.ext in ('pdf', 'txt') %}
+    {% if (show_preview and f.ext in ('pdf', 'txt')) or f.ext in ('png', 'jpg', 'webp') %}
       <a class="btn btn-small btn-quiet" href="{{ url_for('portal.download', file_id=f.id, inline=1) }}" target="_blank" rel="noopener">Open</a>
     {% endif %}
     <a class="btn btn-small btn-quiet" href="{{ url_for('portal.download', file_id=f.id) }}">Download</a>
@@ -32,7 +32,7 @@
 </li>
 {%- endmacro %}
 
-{% macro timeline(events, viewer='user') -%}
+{% macro timeline(events, viewer='user', attached={}) -%}
 <ol class="timeline">
   {% for e in events %}
     {% if viewer == 'user' %}
@@ -47,7 +47,27 @@
           {% if e.is_internal %}<span class="tag">Internal note</span>{% endif %}
           <time datetime="{{ e.created_at }}" title="{{ e.created_at|human_date }}" class="muted small">{{ e.created_at|time_ago }}</time>
         </p>
-        <div class="msg-body">{{ e.body }}</div>
+        {% if e.body %}<div class="msg-body">{{ e.body }}</div>{% endif %}
+        {% set files = attached.get(e.id, []) %}
+        {% if files %}
+        <ul class="msg-attachments">
+          {% for a in files %}
+          <li>
+            {% if a.width %}
+            <a class="msg-shot" href="{{ url_for('portal.attachment', attachment_id=a.id) }}" target="_blank" rel="noopener">
+              <img src="{{ url_for('portal.attachment', attachment_id=a.id) }}" alt="Screenshot: {{ a.original_name }}"
+                   width="{{ a.width }}" height="{{ a.height }}" loading="lazy">
+            </a>
+            {% else %}
+            <a class="msg-file" href="{{ url_for('portal.attachment', attachment_id=a.id) }}">
+              <span class="file-ext" aria-hidden="true">{{ a.ext }}</span>
+              <span>{{ a.original_name }} <span class="muted small">{{ a.size|file_size }}</span></span>
+            </a>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
       </li>
     {% else %}
       <li class="event {% if e.is_internal %}event-internal{% endif %}">
@@ -129,5 +149,15 @@
   {% else %}
     <p class="rate-note">Prices in US dollars.</p>
   {% endif %}
+</div>
+{%- endmacro %}
+
+
+{% macro attach_field(accept, label='Attach screenshots or files') -%}
+<div class="attach" data-attach>
+  <label for="attachments" class="attach-label">{{ label }} <span class="muted">(optional)</span></label>
+  <input id="attachments" name="attachments" type="file" multiple accept="{{ accept }}" aria-describedby="attach-hint">
+  <p id="attach-hint" class="hint">Paste a screenshot straight into the message, drop files here, or choose up to 5 (images or documents).</p>
+  <ul class="attach-list" data-attach-list aria-live="polite"></ul>
 </div>
 {%- endmacro %}

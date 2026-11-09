@@ -9,7 +9,7 @@ from flask import (
 from .auth import home_for, login_required
 from .db import execute, get_db, query, utcnow
 from .helpers import FIRST_SENT_SQL, OPEN_STATUSES, count_words, load_timings, status_events_of, timing
-from . import billing, pricing, local
+from . import attachments, billing, pricing, local
 from .notify import notify_admins
 from .security import INLINE_PREVIEW_TYPES, validate_upload
 from .storage import get_storage
@@ -52,10 +52,10 @@ def store_file(upload, ext, submission_id, kind, uploader_id, visible=True):
 
 
 def add_event(submission_id, actor_id, type_, body="", internal=False):
-    get_db().execute(
+    return get_db().execute(
         "INSERT INTO events (submission_id, actor_id, type, body, is_internal, created_at) VALUES (?, ?, ?, ?, ?, ?)",
         (submission_id, actor_id, type_, body, 1 if internal else 0, utcnow()),
-    )
+    ).lastrowid
 
 
 def own_submission_or_404(sub_id):
@@ -210,8 +210,15 @@ def submission(sub_id):
     t = timing(sub["created_at"], sub["status"], first_sent, current_app.config["REVIEW_MINUTES"],
                status_events=status_events_of(events))
     return render_template(
-        "portal/detail.html", sub=sub, originals=originals, results=results, events=events, reviewer=reviewer, t=t
+        "portal/detail.html", sub=sub, originals=originals, results=results, events=events, reviewer=reviewer, t=t,
+        attached=attachments.by_event(sub_id), attach_accept=attachments.ACCEPT,
     )
+
+
+@bp.route("/attachments/<int:attachment_id>")
+@login_required
+def attachment(attachment_id):
+    return attachments.serve(attachment_id)
 
 
 @bp.route("/submissions/<int:sub_id>/status.json")
@@ -229,18 +236,23 @@ def submission_status(sub_id):
 def reply(sub_id):
     sub = own_submission_or_404(sub_id)
     body = request.form.get("body", "").strip()[:5000]
-    if not body:
-        flash("Write a message before sending.", "error")
-        return redirect(url_for("portal.submission", sub_id=sub_id))
+    prepared, error = attachments.check(request.files.getlist("attachments"))
+    if not error and not body and not prepared:
+        error = "Write a message or attach a screenshot before sending."
+    if error:
+        flash(error, "error")
+        return redirect(url_for("portal.submission", sub_id=sub_id) + "#conversation")
     conn = get_db()
-    add_event(sub_id, g.user["id"], "message", body)
+    event_id = add_event(sub_id, g.user["id"], "message", body)
+    attachments.save(prepared, sub_id, event_id, g.user["id"])
     new_status = sub["status"]
     if sub["status"] == "needs_info":
         new_status = "in_review" if sub["assigned_to"] else "submitted"
         add_event(sub_id, g.user["id"], "status", new_status)
     conn.execute("UPDATE submissions SET status = ?, updated_at = ? WHERE id = ?", (new_status, utcnow(), sub_id))
     conn.commit()
-    notify_admins(f"{g.user['name']} replied on {sub['title']}", sub_id, assigned_to=sub["assigned_to"])
+    extra = f" ({len(prepared)} attached)" if prepared else ""
+    notify_admins(f"{g.user['name']} replied on {sub['title']}{extra}", sub_id, assigned_to=sub["assigned_to"])
     flash("Message sent to your reviewer.", "success")
     return redirect(url_for("portal.submission", sub_id=sub_id) + "#conversation")
 
@@ -262,10 +274,11 @@ def download(file_id):
     path = get_storage().path(f["stored_name"])
     if not path.exists():
         abort(404)
-    inline = request.args.get("inline") == "1" and f["ext"] in INLINE_PREVIEW_TYPES
+    previewable = {**INLINE_PREVIEW_TYPES, **attachments.IMAGE_MIME}
+    inline = request.args.get("inline") == "1" and f["ext"] in previewable
     resp = send_file(
         path,
-        mimetype=INLINE_PREVIEW_TYPES[f["ext"]] if inline else "application/octet-stream",
+        mimetype=previewable[f["ext"]] if inline else "application/octet-stream",
         as_attachment=not inline,
         download_name=f["original_name"],
         max_age=0,
@@ -274,7 +287,9 @@ def download(file_id):
     if inline:
         # Plain text renders sandboxed; PDFs need the browser's viewer, so only block framing.
         resp.headers["Content-Security-Policy"] = (
-            "sandbox; default-src 'none'" if f["ext"] == "txt" else "frame-ancestors 'none'"
+            "sandbox; default-src 'none'" if f["ext"] == "txt"
+            else "sandbox; default-src 'none'; img-src 'self'" if f["ext"] in attachments.IMAGE_MIME
+            else "frame-ancestors 'none'"
         )
     return resp
 

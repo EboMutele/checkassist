@@ -258,6 +258,24 @@ input[type="file"] { font: inherit; font-size: .9375rem; max-width: 100%; }
 .msg-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; margin: 0 0 4px; }
 .msg-head time { margin-left: auto; }
 .compose { margin-top: 8px; }
+/* Screenshots and files on messages */
+.msg-attachments { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.msg-attachments li { max-width: 100%; }
+.msg-shot { display: inline-block; vertical-align: top; max-width: 100%; line-height: 0; border: 1px solid var(--rule-strong); border-radius: var(--r-ctl); overflow: hidden; }
+/* fixed caps, no percentages: a percentage here makes the frame size itself to the full-size image */
+.msg-shot img { display: block; width: auto; height: auto; max-width: 280px; max-height: 220px; background: var(--desk); }
+.msg-shot:hover { border-color: var(--ink); }
+.msg-file { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; padding: 6px 10px 6px 6px; border: 1px solid var(--rule-strong); border-radius: var(--r-ctl); background: var(--paper); overflow-wrap: anywhere; }
+.msg-file .file-ext { width: 38px; padding: 4px 0; }
+.attach { display: grid; gap: 4px; margin-top: 4px; }
+.attach-label { margin-top: 6px; }
+.attach input[type="file"] { font-size: .875rem; }
+.attach-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.attach-list:empty { display: none; }
+.attach-item { display: flex; align-items: center; gap: 10px; font-size: .9375rem; overflow-wrap: anywhere; }
+.attach-item img { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; border: 1px solid var(--rule); flex: none; }
+.attach-item .link-button { margin-left: auto; padding: 2px 0; }
+.compose.is-over { outline: 2px dashed var(--ink-3); outline-offset: 6px; border-radius: var(--r-ctl); }
 
 /* ---------- landing ---------- */
 .landing .wrap { max-width: var(--max-landing); }

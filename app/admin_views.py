@@ -9,9 +9,8 @@ from .helpers import (
     FIRST_SENT_SQL, OPEN_STATUSES, STATUSES, extract_preview, load_timings, ref, status_events_of, timing, word_count,
 )
 from .notify import notify
-from . import billing, pricing, local
+from . import attachments, billing, pricing, local
 from .sms import feedback_ready_text, mask_phone, send_sms
-from .security import validate_upload
 from .storage import get_storage
 from .user_views import add_event, store_file
 
@@ -169,6 +168,7 @@ def submission(sub_id):
     return render_template(
         "admin/detail.html", sub=sub, originals=originals, results=results, preview=preview,
         preview_words=word_count(preview), events=events, admins=admins, other_count=other_count, t=t,
+        attached=attachments.by_event(sub_id), attach_accept=attachments.ACCEPT,
     )
 
 
@@ -257,11 +257,15 @@ def message(sub_id):
     body = request.form.get("body", "").strip()[:5000]
     internal = request.form.get("visibility") == "internal"
     ask = request.form.get("request_info") == "1" and not internal
-    if not body:
-        flash("Write a message first.", "error")
+    prepared, error = attachments.check(request.files.getlist("attachments"))
+    if not error and not body and not prepared:
+        error = "Write a message or attach a file first."
+    if error:
+        flash(error, "error")
         return _back(sub_id, "#conversation")
     conn = get_db()
-    add_event(sub_id, g.user["id"], "note" if internal else "message", body, internal=internal)
+    event_id = add_event(sub_id, g.user["id"], "note" if internal else "message", body, internal=internal)
+    attachments.save(prepared, sub_id, event_id, g.user["id"])
     if ask:
         _set_status(sub, "needs_info")
     conn.execute("UPDATE submissions SET updated_at = ? WHERE id = ?", (utcnow(), sub_id))
@@ -286,15 +290,11 @@ def results(sub_id):
     sub = get_submission_or_404(sub_id)
     action = request.form.get("action", "save")
     feedback = request.form.get("feedback", "").strip()[:50_000]
-    uploads = [f for f in request.files.getlist("result_files") if f and f.filename]
-
-    checked = []
-    for upload in uploads:
-        ext, error = validate_upload(upload)
-        if error:
-            flash(f"{upload.filename}: {error}", "error")
-            return _back(sub_id, "#results")
-        checked.append((upload, ext))
+    prepared, error = attachments.check(request.files.getlist("result_files"))
+    if error:
+        flash(error, "error")
+        return _back(sub_id, "#results")
+    checked = [(upload, ext) for upload, ext, _, _ in prepared]  # screenshots arrive re-encoded
 
     conn = get_db()
     for upload, ext in checked:

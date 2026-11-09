@@ -59,6 +59,22 @@ CREATE TABLE IF NOT EXISTS events (
     is_internal   INTEGER NOT NULL DEFAULT 0,
     created_at    TEXT    NOT NULL
 );
+-- Screenshots and files attached to conversation messages (an attachment on an internal note stays internal)
+CREATE TABLE IF NOT EXISTS attachments (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    submission_id INTEGER NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+    event_id      INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    original_name TEXT    NOT NULL,
+    stored_name   TEXT    NOT NULL UNIQUE,
+    ext           TEXT    NOT NULL,
+    size          INTEGER NOT NULL,
+    sha256        TEXT    NOT NULL,
+    width         INTEGER,
+    height        INTEGER,
+    uploaded_by   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    created_at    TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_attachments_submission ON attachments(submission_id);
 CREATE INDEX IF NOT EXISTS idx_events_submission ON events(submission_id, created_at);
 
 CREATE TABLE IF NOT EXISTS notifications (
