@@ -59,10 +59,16 @@ def mask_phone(phone):
     return f"{phone[:4]}•••{phone[-3:]}"
 
 
+def user_agent():
+    from .billing import user_agent as named  # same reason as for Paystack: Cloudflare blocks "Python-urllib"
+    return named()
+
+
 def _post(url, fields, headers):
     req = urllib.request.Request(
         url, data=urllib.parse.urlencode(fields).encode(), method="POST",
-        headers={"Accept": "application/json", "Content-Type": "application/x-www-form-urlencoded", **headers},
+        headers={"Accept": "application/json", "Content-Type": "application/x-www-form-urlencoded",
+                 "User-Agent": user_agent(), **headers},
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
