@@ -1,4 +1,5 @@
 """The private Kenya link: local KES prices, M-Pesa through Paystack, Kenyan numbers, kept out of search."""
+import re
 from decimal import Decimal
 
 import pytest
@@ -86,7 +87,9 @@ def test_signing_up_through_the_link_prices_the_account_in_kes(kes_app):
     s = Session(kes_app)
     s.get("/local")
     form = s.get("/register").get_data(as_text=True)
-    assert f"from KSh{NBSP}199 a check" in form and 'placeholder="0712 345 678"' in form
+    assert f"from KSh{NBSP}199 a check" in form
+    assert '<option value="KE" data-dial="254"' in form and re.search(r'value="KE"[^>]* selected>', form)
+    assert 'data-guess' not in form  # the link says Kenya; the browser's time zone doesn't override it
     _register(s)
     user = _user(kes_app, "wanjiru@example.com")
     assert user["currency"] == "KES" and user["signup_source"] == "local"

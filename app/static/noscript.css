@@ -1,0 +1,3 @@
+/* Loaded inside <noscript>: without phone.js the compact label can't follow the picker, so show the plain select. */
+.phone-cc-shown { display: none; }
+.phone-cc select { position: static; opacity: 1; width: auto; max-width: 12rem; }

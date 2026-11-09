@@ -1,5 +1,6 @@
 import io
 import json
+import re
 import sqlite3
 import urllib.parse
 
@@ -64,7 +65,7 @@ def test_local_numbers_accepted_with_default_country_code(tmp_path):
     app = create_app({"TESTING": True, "SECRET_KEY": "t", "DATABASE": str(tmp_path / "d.sqlite3"),
                       "UPLOAD_DIR": str(tmp_path / "u"), "DEFAULT_COUNTRY_CODE": "254"})
     page = app.test_client().get("/register").get_data(as_text=True)
-    assert 'placeholder="0712 345 678"' in page
+    assert re.search(r'value="KE"[^>]* selected>', page) and 'placeholder="712 123456"' in page
     _, r = _register(app, phone="0712 000 111")
     assert r.status_code == 302
     with app.app_context():
@@ -79,7 +80,8 @@ def test_customer_without_number_is_prompted_and_can_add_one(app, bob):
     r = bob.post("/account", {"name": "Bob Roe", "phone": "+254 700 111 222"})
     assert r.status_code == 302
     assert "Add your mobile number" not in bob.get("/dashboard").get_data(as_text=True)
-    assert 'value="+254700111222"' in bob.get("/account").get_data(as_text=True)
+    page = bob.get("/account").get_data(as_text=True)
+    assert re.search(r'value="KE"[^>]* selected>', page) and 'value="700111222"' in page
 
 
 def test_admin_can_leave_phone_empty_and_sees_customer_numbers(admin, users):
