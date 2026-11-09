@@ -36,6 +36,11 @@ def create_app(test_config=None):
         SMTP_PASSWORD=os.environ.get("SMTP_PASSWORD", ""),
         SMTP_FROM=os.environ.get("SMTP_FROM", "NerdAccess <no-reply@nerdaccess.store>"),
         SMTP_TLS=_bool("SMTP_TLS", True),
+        # Resend's HTTPS API: used instead of SMTP when the key is set (DigitalOcean blocks the SMTP ports)
+        RESEND_API_KEY=os.environ.get("RESEND_API_KEY", "").strip(),
+        EMAIL_FROM=(os.environ.get("EMAIL_FROM") or os.environ.get("SMTP_FROM")
+                    or "NerdAccess <notifications@mail.nerdaccess.store>").strip(),
+        EMAIL_REPLY_TO=os.environ.get("EMAIL_REPLY_TO", "").strip(),
         # On by default: with a short review-time promise, reviewers need to hear about uploads at once.
         ADMIN_EMAIL_ALERTS=_bool("ADMIN_EMAIL_ALERTS", True),
         # Texts: see app/sms.py. DEFAULT_COUNTRY_CODE (digits, e.g. 254) lets people type local numbers.

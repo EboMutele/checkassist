@@ -9,7 +9,7 @@
 </header>
 
 {% if not email_ready %}
-  <p class="callout callout-warn">Email isn't set up, so customers get no emails: set the <code>SMTP_*</code> settings. Until then, messages below show as “Not set up” so you can see what they would have said.</p>
+  <p class="callout callout-warn">Email isn't set up, so customers get no emails: set <code>RESEND_API_KEY</code> (or the <code>SMTP_*</code> settings). Until then, messages below show as “Not set up” so you can see what they would have said.</p>
 {% endif %}
 {% if not sms_ready %}
   <p class="callout callout-warn">Texts are switched off: set <code>SMS_PROVIDER</code> and its keys. “Feedback ready” texts show below as “Not set up” until then.</p>
