@@ -13,7 +13,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 
-from flask import current_app, url_for
+from flask import current_app, render_template, url_for
 
 from .db import get_db, query, utcnow
 
@@ -47,18 +47,18 @@ def _reply_to():
     return cfg.get("EMAIL_REPLY_TO") or cfg.get("SUPPORT_EMAIL") or ""
 
 
-def send_email(to_addr: str, subject: str, body: str, submission_id=None) -> str:
-    """Returns "sent", "failed" or "not_configured"."""
+def send_email(to_addr: str, subject: str, body: str, submission_id=None, html=None) -> str:
+    """Send plain text, plus an HTML version when given. Returns "sent", "failed" or "not_configured"."""
     cfg = current_app.config
     outbox = cfg.get("MAIL_OUTBOX")
     if outbox is not None:  # tests
-        outbox.append({"to": to_addr, "subject": subject, "body": body, "reply_to": _reply_to()})
+        outbox.append({"to": to_addr, "subject": subject, "body": body, "html": html, "reply_to": _reply_to()})
         log_message("email", to_addr, subject, body, "sent", submission_id=submission_id)
         return "sent"
     if cfg.get("RESEND_API_KEY"):
-        error = _send_resend(to_addr, subject, body)
+        error = _send_resend(to_addr, subject, body, html)
     elif cfg.get("SMTP_HOST"):
-        error = _send_smtp(to_addr, subject, body)
+        error = _send_smtp(to_addr, subject, body, html)
     else:
         log.info("Email not configured; skipped '%s' to %s", subject, to_addr)
         log_message("email", to_addr, subject, body, "not_configured",
@@ -85,7 +85,7 @@ def _resend_post(url, headers, body):
         return status, {"message": text[:200]}
 
 
-def _send_resend(to_addr, subject, body):
+def _send_resend(to_addr, subject, body, html=None):
     """Send through Resend's API. Returns None when accepted, else a reason for Admin > Messages.
 
     Retries network errors, 429 and 5xx with back-off. The Idempotency-Key is the same on every try,
@@ -93,6 +93,8 @@ def _send_resend(to_addr, subject, body):
     from .billing import user_agent  # Resend sits behind Cloudflare, which blocks "Python-urllib"
     cfg = current_app.config
     payload = {"from": cfg["EMAIL_FROM"], "to": [to_addr], "subject": subject, "text": body}
+    if html:
+        payload["html"] = html
     if _reply_to():
         payload["reply_to"] = _reply_to()
     headers = {"Authorization": f"Bearer {cfg['RESEND_API_KEY']}", "Content-Type": "application/json",
@@ -117,7 +119,7 @@ def _send_resend(to_addr, subject, body):
     return error
 
 
-def _send_smtp(to_addr, subject, body):
+def _send_smtp(to_addr, subject, body, html=None):
     cfg = current_app.config
     msg = EmailMessage()
     msg["From"] = cfg["EMAIL_FROM"]
@@ -126,6 +128,8 @@ def _send_smtp(to_addr, subject, body):
     if _reply_to():
         msg["Reply-To"] = _reply_to()
     msg.set_content(body)
+    if html:
+        msg.add_alternative(html, subtype="html")
     try:
         with smtplib.SMTP(cfg["SMTP_HOST"], cfg["SMTP_PORT"], timeout=10) as smtp:
             if cfg.get("SMTP_TLS"):
@@ -139,9 +143,12 @@ def _send_smtp(to_addr, subject, body):
     return None
 
 
-def notify(user_ids, message, submission_id=None, email_subject=None, link_endpoint=None):
+def notify(user_ids, message, submission_id=None, email_subject=None, link_endpoint=None, email=None):
     """Create an in-app notification for each user; email them too if a subject is given.
-    Returns each email's outcome ("sent", "failed", "not_configured")."""
+
+    `email` shapes the email (see compose_email): heading, intro, the document, a quote, the button.
+    Without it the in-app message becomes the heading. Returns each email's outcome
+    ("sent", "failed", "not_configured")."""
     user_ids = [uid for uid in dict.fromkeys(user_ids) if uid]
     if not user_ids:
         return []
@@ -155,29 +162,73 @@ def notify(user_ids, message, submission_id=None, email_subject=None, link_endpo
     if not email_subject:
         return []
     link = ""
-    if link_endpoint and submission_id:
-        link = current_app.config["BASE_URL"].rstrip("/") + url_for(link_endpoint, sub_id=submission_id)
+    if link_endpoint:
+        args = {"sub_id": submission_id} if submission_id else {}
+        link = current_app.config["BASE_URL"].rstrip("/") + url_for(link_endpoint, **args)
     placeholders = ",".join("?" * len(user_ids))
     outcomes = []
     for row in query(f"SELECT email, name FROM users WHERE id IN ({placeholders}) AND is_active = 1", user_ids):
-        body = f"Hi {row['name']},\n\n{message}\n"
-        if link:
-            body += f"\nOpen it here: {link}\n"
-        body += f"\n— {current_app.config['APP_NAME']}"
-        outcomes.append(send_email(row["email"], email_subject, body, submission_id))
+        text, html = compose_email(email_subject, row["name"], {"heading": message, **(email or {})}, link)
+        outcomes.append(send_email(row["email"], email_subject, text, submission_id, html=html))
     return outcomes
+
+
+def _first_name(name):
+    return (name or "").strip().split(" ")[0] or "there"
+
+
+def compose_email(subject, name, content, link=""):
+    """(plain text, HTML) for one email. content keys, all optional except heading:
+    kicker, heading, intro (list of paragraphs), document, details [(label, value)], quote, quote_by,
+    button, preheader, footer ("customer" or "reviewer")."""
+    cfg = current_app.config
+    app_name = cfg["APP_NAME"]
+    home = cfg["BASE_URL"].rstrip("/")
+    intro = [f"Hi {_first_name(name)},", *content.get("intro", [])]
+    quote = (content.get("quote") or "").strip()
+    if len(quote) > 900:
+        quote = quote[:900].rsplit(" ", 1)[0] + "…"
+    footer = (f"You get these because you review documents on {app_name}." if content.get("footer") == "reviewer"
+              else f"You're getting this because you asked {app_name} to review a document.")
+    ctx = {
+        "subject": subject, "app_name": app_name, "home_url": home,
+        "kicker": content.get("kicker", ""), "heading": content["heading"], "intro": intro,
+        "document": content.get("document", ""), "details": content.get("details", []),
+        "quote": quote, "quote_by": content.get("quote_by", ""),
+        "button": content.get("button") or f"Open {app_name}", "button_url": link,
+        "preheader": content.get("preheader") or (content.get("intro") or [content["heading"]])[0],
+        "signoff": f"— {app_name}", "footer": footer,
+    }
+    html = render_template("email/message.html", **ctx)
+
+    lines = [intro[0], "", content["heading"], ""]
+    lines += [p for para in intro[1:] for p in (para, "")]
+    if ctx["document"]:
+        lines.append(f"Document: {ctx['document']}")
+        lines += [f"{label}: {value}" for label, value in ctx["details"]]
+        lines.append("")
+    if quote:
+        if ctx["quote_by"]:
+            lines.append(f"{ctx['quote_by']}:")
+        lines += ["> " + q for q in quote.splitlines() or [""]]
+        lines.append("")
+    if link:
+        lines += [f"{ctx['button']}: {link}", ""]
+    lines += [ctx["signoff"], "", footer]
+    return "\n".join(lines) + "\n", html
 
 
 def admin_ids():
     return [r["id"] for r in query("SELECT id FROM users WHERE role = 'admin' AND is_active = 1")]
 
 
-def notify_admins(message, submission_id, assigned_to=None, email=None):
-    """Tell the assigned reviewer, or every admin when nobody is assigned."""
+def notify_admins(message, submission_id, assigned_to=None, email=None, content=None):
+    """Tell the assigned reviewer, or every admin when nobody is assigned. `content` shapes the email."""
     targets = [assigned_to] if assigned_to else admin_ids()
     subject = None
     if email is None:
         email = current_app.config.get("ADMIN_EMAIL_ALERTS", False)
     if email:
         subject = f"[{current_app.config['APP_NAME']}] {message}"
-    notify(targets, message, submission_id, email_subject=subject, link_endpoint="admin.submission")
+    notify(targets, message, submission_id, email_subject=subject, link_endpoint="admin.submission",
+           email={"button": "Open in admin", "footer": "reviewer", **(content or {})})

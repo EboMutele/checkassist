@@ -174,7 +174,19 @@ def new_submission():
             conn.rollback()
             storage.delete(stored_name)
             raise
-        notify_admins(f"New document from {g.user['name']}: {title}", sub_id)
+        notify_admins(f"New document from {g.user['name']}: {title}", sub_id, content={
+            "kicker": "New document",
+            "heading": f"{g.user['name']} sent a document",
+            "intro": [f"The review clock has started: aim to send feedback within "
+                      f"{current_app.config.get('REVIEW_MINUTES') or 20} minutes."],
+            "document": title,
+            "details": [(label, value) for label, value in (
+                ("Words", f"{words:,}" if words else ""),
+                ("Checks used", str(needed) if needed else ""),
+                ("Instructions", (form["instructions"] or "")[:200]),
+            ) if value],
+            "button": "Open in admin",
+        })
         used = f" It used {needed} {'check' if needed == 1 else 'checks'}." if needed else ""
         flash(f"Uploaded.{used} We'll let you know as soon as your feedback is ready.", "success")
         return redirect(url_for("portal.submission", sub_id=sub_id))
@@ -252,7 +264,17 @@ def reply(sub_id):
     conn.execute("UPDATE submissions SET status = ?, updated_at = ? WHERE id = ?", (new_status, utcnow(), sub_id))
     conn.commit()
     extra = f" ({len(prepared)} attached)" if prepared else ""
-    notify_admins(f"{g.user['name']} replied on {sub['title']}{extra}", sub_id, assigned_to=sub["assigned_to"])
+    notify_admins(f"{g.user['name']} replied on {sub['title']}{extra}", sub_id, assigned_to=sub["assigned_to"], content={
+        "kicker": "Reply",
+        "heading": f"{g.user['name']} replied",
+        "intro": ["Their review can carry on now." if sub["status"] == "needs_info" else "New message on their document."],
+        "document": sub["title"],
+        "details": [("Attachments", str(len(prepared)))] if prepared else [],
+        "quote": body or "(Sent files only.)",
+        "quote_by": g.user["name"],
+        "button": "Open in admin",
+        "preheader": (body or "They sent you a file.")[:120],
+    })
     flash("Message sent to your reviewer.", "success")
     return redirect(url_for("portal.submission", sub_id=sub_id) + "#conversation")
 

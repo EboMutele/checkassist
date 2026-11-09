@@ -1,0 +1,93 @@
+{#- One layout for every email. Email clients are not browsers: tables, inline styles, no web fonts,
+    no scripts, no external CSS. The plain-text twin is built in notify.py from the same fields. -#}
+<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>{{ subject }}</title>
+<style>
+  @media (max-width: 620px) {
+    .card { padding: 28px 22px !important; }
+    .outer { padding: 20px 12px !important; }
+    h1 { font-size: 26px !important; }
+  }
+  a { color: #d7232c; }
+</style>
+</head>
+<body style="margin:0; padding:0; background:#e9edf1; -webkit-text-size-adjust:100%;">
+  {#- preview line in the inbox list, hidden in the email itself #}
+  <div style="display:none; max-height:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px; color:#e9edf1; opacity:0;">{{ preheader }}&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#e9edf1;">
+    <tr>
+      <td class="outer" align="center" style="padding:36px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+          {#- wordmark: serif name over a red pen stroke, as on the site #}
+          <tr>
+            <td style="padding:0 4px 18px;">
+              <a href="{{ home_url }}" style="text-decoration:none; color:#1b1d24;">
+                <span style="font-family:Georgia,'Times New Roman',serif; font-size:24px; font-weight:bold; letter-spacing:-0.2px; color:#1b1d24; border-bottom:3px solid #d7232c; padding-bottom:2px;">{{ app_name }}</span>
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td class="card" style="background:#ffffff; border-radius:6px; padding:36px 36px 32px; border-left:3px solid #f2b5b8;">
+              {% if kicker %}<p style="margin:0 0 10px; font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif; font-size:12px; font-weight:bold; letter-spacing:1.2px; text-transform:uppercase; color:#d7232c;">{{ kicker }}</p>{% endif %}
+              <h1 style="margin:0 0 18px; font-family:Georgia,'Times New Roman',serif; font-size:30px; line-height:1.15; font-weight:normal; color:#1b1d24;">{{ heading }}</h1>
+              {% for p in intro %}
+              <p style="margin:0 0 14px; font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif; font-size:16px; line-height:1.55; color:#1b1d24;">{{ p }}</p>
+              {% endfor %}
+              {% if document %}
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 18px;">
+                <tr>
+                  <td style="background:#f6f7f9; border:1px solid #e1e5ea; border-radius:6px; padding:14px 16px;">
+                    <p style="margin:0 0 2px; font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif; font-size:12px; letter-spacing:.6px; text-transform:uppercase; color:#555b68;">Document</p>
+                    <p style="margin:0; font-family:Georgia,'Times New Roman',serif; font-size:18px; line-height:1.35; color:#1b1d24;">{{ document }}</p>
+                    {% for label, value in details %}
+                    <p style="margin:6px 0 0; font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif; font-size:14px; line-height:1.45; color:#555b68;">{{ label }}: <span style="color:#1b1d24;">{{ value }}</span></p>
+                    {% endfor %}
+                  </td>
+                </tr>
+              </table>
+              {% endif %}
+              {% if quote %}
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 20px;">
+                <tr>
+                  <td style="border-left:3px solid #d7232c; background:#fdeced; padding:14px 16px; border-radius:0 6px 6px 0;">
+                    {% if quote_by %}<p style="margin:0 0 6px; font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif; font-size:13px; font-weight:bold; color:#555b68;">{{ quote_by }}</p>{% endif %}
+                    <p style="margin:0; font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif; font-size:15px; line-height:1.55; color:#1b1d24;">{% for line in quote.split('\n') %}{{ line }}{% if not loop.last %}<br>{% endif %}{% endfor %}</p>
+                  </td>
+                </tr>
+              </table>
+              {% endif %}
+              {% if button_url %}
+              {#- a "bulletproof" button: a link inside a coloured cell works in every client, Outlook included #}
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 6px;">
+                <tr>
+                  <td align="center" bgcolor="#d7232c" style="border-radius:10px;">
+                    <a href="{{ button_url }}" style="display:inline-block; padding:14px 26px; font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif; font-size:16px; font-weight:bold; color:#ffffff; text-decoration:none; border-radius:10px;">{{ button }}</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:14px 0 0; font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif; font-size:13px; line-height:1.5; color:#555b68;">Or open this link: <a href="{{ button_url }}" style="color:#555b68; word-break:break-all;">{{ button_url }}</a></p>
+              {% endif %}
+              {% if signoff %}
+              <p style="margin:24px 0 0; font-family:Georgia,'Times New Roman',serif; font-size:16px; font-style:italic; color:#1b1d24;">{{ signoff }}</p>
+              {% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:18px 6px 0; font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif; font-size:12px; line-height:1.6; color:#555b68;">
+              {{ footer }}<br>
+              <a href="{{ home_url }}" style="color:#555b68;">{{ home_url|replace('https://', '')|replace('http://', '') }}</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

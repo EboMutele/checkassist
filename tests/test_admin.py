@@ -108,7 +108,8 @@ def test_question_flow_needs_info_then_customer_reply(app, alice, admin, users):
     page = alice.get(f"/submissions/{sid}").get_data(as_text=True)
     assert "Needs your input" in page and "Which citation style" in page and "Your reviewer" in page
     assert "Your reviewer has a question" in alice.get("/dashboard").get_data(as_text=True)
-    assert any("Message about" in m["subject"] for m in app.config["MAIL_OUTBOX"])
+    mail = next(m for m in app.config["MAIL_OUTBOX"] if "has a question about" in m["subject"])
+    assert "Which citation style" in mail["body"] and "Which citation style" in mail["html"]  # the question itself
 
     alice.post(f"/submissions/{sid}/reply", {"body": "Harvard, please."})
     with app.app_context():
