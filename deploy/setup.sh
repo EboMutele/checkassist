@@ -50,21 +50,13 @@ PY
   chmod 600 .env.new && mv .env.new .env
 fi
 
-# 5. Build and start the app (the HTTPS front door starts in step 9)
+# 5. Build and start the app (the HTTPS front door starts in step 8)
 docker compose up -d --build app
 
 # 6. Nightly backups at 03:00 UTC, kept for 14 days
 echo "0 3 * * * root $DIR/deploy/backup.sh >> /var/log/nerdaccess-backup.log 2>&1" > /etc/cron.d/nerdaccess-backup
 
-# 7. One command to put new code live later: nerdaccess-update
-cat > /usr/local/bin/nerdaccess-update <<EOF
-#!/bin/sh
-set -e
-cd $DIR && git pull --ff-only && docker compose up -d --build && docker image prune -f
-EOF
-chmod +x /usr/local/bin/nerdaccess-update
-
-# 8. Next steps, shown each time you open the console
+# 7. Next steps, shown each time you open the console
 cat > /etc/motd <<'EOF'
 
   NerdAccess  (code in /root/nerdaccess, setup log /var/log/nerdaccess-setup.log)
@@ -73,12 +65,15 @@ cat > /etc/motd <<'EOF'
     cd ~/nerdaccess && docker compose exec app flask --app wsgi create-admin
   Take payments: add PAYSTACK_SECRET_KEY with  nano ~/nerdaccess/.env  then
     cd ~/nerdaccess && docker compose up -d
-  Put new code live:   nerdaccess-update
+  New commits on main go live by themselves within 2 minutes, and roll back if the app
+  stops answering. Log: /var/log/nerdaccess-deploy.log
+  Deploy now:          nerdaccess-update
+  Pause auto-updates:  touch /root/nerdaccess.pause-deploys   (rm it to resume)
   Watch the app:       cd ~/nerdaccess && docker compose logs -f app
 
 EOF
 
-# 9. Wait until the internet sees nerdaccess.store pointing at this server, then start Caddy so it
+# 8. Wait until the internet sees nerdaccess.store pointing at this server, then start Caddy so it
 #    gets the HTTPS certificate on the first try (asking too early gets you rate-limited for an hour).
 #    Public resolvers are what Let's Encrypt sees: they catch nameservers still at the registrar and
 #    old answers still cached, which asking DigitalOcean's own DNS would miss.
@@ -109,4 +104,7 @@ for i in $(seq 1 240); do
   sleep 30
 done
 docker compose up -d
+
+# 9. Auto-update from main (also checks the site answers now) and the nerdaccess-update command
+bash "$DIR/deploy/autodeploy.sh" --install 2>&1 | tee -a /var/log/nerdaccess-deploy.log || true
 echo "== NerdAccess setup finished $(date -u). Open https://$DOMAIN"
