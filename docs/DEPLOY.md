@@ -58,10 +58,22 @@ curl -fsSL https://raw.githubusercontent.com/EboMutele/checkassist/main/deploy/s
 
 It downloads the code, writes `.env` with a fresh `SECRET_KEY`, starts the site, waits until
 nerdaccess.store points at the Droplet before asking for the HTTPS certificate, sets up nightly
-backups and adds `nerdaccess-update` for putting new code live. Run it again if the console
+backups, and turns on auto-update (below). Run it again if the console
 disconnects. Then create your admin login (step 6) and add Paystack (step 7). The rest of this
 section is the same thing by hand. The script clones over HTTPS, so it needs the repository to be
 public; for a private one, follow step 4.
+
+## Auto-update from main
+
+`deploy/autodeploy.sh` checks GitHub every 2 minutes. When main has a new commit it pulls it, rebuilds,
+and checks the app answers `/` and `/robots.txt`. If it doesn't, it puts the previous version back and
+skips that commit until a newer one lands, so a broken merge can't keep the site down. Merging a PR is
+all it takes to go live.
+
+- Turn it on (servers set up before it existed): `cd ~/nerdaccess && git pull && bash deploy/autodeploy.sh --install`
+- What happened: `tail -20 /var/log/nerdaccess-deploy.log`
+- Deploy right now: `nerdaccess-update`
+- Pause: `touch /root/nerdaccess.pause-deploys`; resume: `rm /root/nerdaccess.pause-deploys`
 
 ## 4. Get the code onto the server
 
@@ -184,7 +196,8 @@ record to add to DNS. Then submit `https://nerdaccess.store/sitemap.xml`.
 
 | Task | Command (in `~/nerdaccess`) |
 |---|---|
-| Deploy the latest code | `git pull && docker compose up -d --build` |
+| Deploy the latest code | automatic within 2 minutes of a merge; now: `nerdaccess-update` |
+| See what auto-update did | `tail -20 /var/log/nerdaccess-deploy.log` |
 | Watch the app | `docker compose logs -f app` |
 | Restart | `docker compose restart app` |
 | Change a setting | edit `.env`, then `docker compose up -d` |
