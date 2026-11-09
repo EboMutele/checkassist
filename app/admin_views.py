@@ -243,8 +243,16 @@ def set_status(sub_id):
             [sub["user_id"]],
             f"“{sub['title']}” is now: {label}.",
             sub_id,
-            email_subject=f"Update on “{sub['title']}”" if new_status == "needs_info" else None,
+            email_subject=f"Your reviewer needs something for “{sub['title']}”" if new_status == "needs_info" else None,
             link_endpoint="portal.submission",
+            email={
+                "kicker": "Waiting for you",
+                "heading": "Your reviewer needs something from you",
+                "intro": ["They've paused your review until they hear back. Open your document to see "
+                          "what they need, then reply there."],
+                "document": sub["title"],
+                "button": "See what's needed",
+            },
         )
         flash(f"Status set to {label}.", "success")
     return _back(sub_id)
@@ -276,9 +284,24 @@ def message(sub_id):
             if ask
             else f"New message from your reviewer on “{sub['title']}”."
         )
+        attached = f"{len(prepared)} {'file' if len(prepared) == 1 else 'files'} attached" if prepared else ""
         notify(
             [sub["user_id"]], text, sub_id,
-            email_subject=f"Message about “{sub['title']}”", link_endpoint="portal.submission",
+            email_subject=(f"Your reviewer has a question about “{sub['title']}”" if ask
+                           else f"Message about “{sub['title']}”"),
+            link_endpoint="portal.submission",
+            email={
+                "kicker": "Question" if ask else "New message",
+                "heading": "Your reviewer has a question" if ask else "A message from your reviewer",
+                "intro": ["Reply when you can and your review carries on straight away." if ask
+                          else "Here's what they wrote about your document."],
+                "document": sub["title"],
+                "details": [("Attachments", attached)] if attached else [],
+                "quote": body or ("(See the attached files.)" if prepared else ""),
+                "quote_by": g.user["name"].split(" ")[0] + ", your reviewer",
+                "button": "Reply to your reviewer" if ask else "Open the conversation",
+                "preheader": (body or "Your reviewer sent you a file.")[:120],
+            },
         )
     flash("Internal note added." if internal else "Message sent to the customer.", "success")
     return _back(sub_id, "#conversation")
@@ -321,12 +344,27 @@ def results(sub_id):
         add_event(sub_id, g.user["id"], "results_sent", "updated" if resend else "")
         _set_status(sub, "completed")
         conn.commit()
+        n_files = query("SELECT COUNT(*) AS n FROM files WHERE submission_id = ? AND kind = 'result'",
+                        (sub_id,), one=True)["n"]
         emails = notify(
             [sub["user_id"]],
             f"Your {'updated ' if resend else ''}feedback for “{sub['title']}” is ready.",
             sub_id,
-            email_subject=f"Your feedback is ready: {sub['title']}",
+            email_subject=f"Your {'updated ' if resend else ''}feedback is ready: {sub['title']}",
             link_endpoint="portal.submission",
+            email={
+                "kicker": "Updated feedback" if resend else "Feedback ready",
+                "heading": "Your updated feedback is ready" if resend else "Your feedback is ready",
+                "intro": ["Your reviewer has updated their notes." if resend else
+                          "A reviewer has read your document and sent back their notes."],
+                "document": sub["title"],
+                "details": [("Marked-up files", str(n_files))] if n_files else [],
+                # the opening of the notes, so the email itself is worth reading; the rest is on the site
+                "quote": feedback if len(feedback) <= 400 else feedback[:400].rsplit(" ", 1)[0] + "…",
+                "quote_by": g.user["name"].split(" ")[0] + ", your reviewer",
+                "button": "Read your feedback",
+                "preheader": "Your reviewer's notes are waiting for you.",
+            },
         )
         emailed = "sent" in emails
         add_event(sub_id, g.user["id"], "email", "Email sent." if emailed else (

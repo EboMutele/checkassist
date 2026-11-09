@@ -455,7 +455,11 @@ def handle_event(event, data):
             if event == "invoice.payment_failed":
                 from .notify import notify
                 notify([sub["user_id"]], "We couldn't renew your monthly plan. Update your card to keep your checks coming.",
-                       email_subject="Your monthly plan couldn't renew")
+                       email_subject="Your monthly plan couldn't renew", link_endpoint="billing.page", email={
+                           "kicker": "Billing", "heading": "Your monthly plan couldn't renew",
+                           "intro": ["Your card was declined. Update it to keep your checks coming; "
+                                     "anything already on your account stays."],
+                           "button": "Update your card"})
 
 
 # ---- pages ---------------------------------------------------------------------------------

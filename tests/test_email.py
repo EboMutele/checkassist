@@ -89,3 +89,56 @@ def test_without_a_key_or_smtp_email_is_not_configured(resend_app):
 def test_messages_page_counts_resend_as_set_up(resend_app, admin):
     page = admin.get("/admin/messages").get_data(as_text=True)
     assert "Email isn't set up" not in page
+
+
+# --- what the emails look like ----------------------------------------------------------------------
+
+def test_html_part_goes_to_resend_alongside_the_text(resend_app, monkeypatch):
+    calls = fake_resend(monkeypatch, [(200, {"id": "e"})])
+    with resend_app.test_request_context():
+        notify.send_email("a@example.com", "s", "plain", html="<p>rich</p>")
+    assert calls[0]["payload"]["text"] == "plain" and calls[0]["payload"]["html"] == "<p>rich</p>"
+
+
+def test_compose_escapes_what_people_typed_and_keeps_a_readable_text_twin(app):
+    with app.test_request_context():
+        text, html = notify.compose_email(
+            "Message about “<b>Essay</b>”", "Amina Wanjiru",
+            {"kicker": "New message", "heading": "A message from your reviewer",
+             "intro": ["Here's what they wrote."], "document": "<img src=x onerror=alert(1)>",
+             "details": [("Attachments", "1 file attached")],
+             "quote": "Line one <script>alert(1)</script>\nLine two", "quote_by": "Sam, your reviewer",
+             "button": "Open the conversation"},
+            "https://nerdaccess.store/submissions/7")
+    assert "<script>" not in html and "&lt;script&gt;" in html
+    assert "<img src=x" not in html and "&lt;img src=x" in html
+    assert "Line one &lt;script&gt;alert(1)&lt;/script&gt;<br>Line two" in html  # line breaks survive, safely
+    assert 'href="https://nerdaccess.store/submissions/7"' in html and "Open the conversation" in html
+    assert "Hi Amina," in html and "Hi Amina," in text  # first name only
+    assert "> Line two" in text and "Sam, your reviewer:" in text
+    assert "Open the conversation: https://nerdaccess.store/submissions/7" in text
+    assert "Document: <img src=x onerror=alert(1)>" in text  # plain text needs no escaping
+    assert "Attachments: 1 file attached" in text
+
+
+def test_long_quotes_are_cut_at_a_word(app):
+    with app.test_request_context():
+        text, html = notify.compose_email("s", "A", {"heading": "h", "quote": "word " * 400})
+    assert "…" in html and html.count("word") < 200 and "> word" in text
+
+
+def test_feedback_ready_email_end_to_end(app, alice, admin):
+    import io
+    from tests.conftest import sub_id_from, upload
+    sub_id = sub_id_from(upload(alice, title="Climate essay"))
+    app.config["MAIL_OUTBOX"].clear()
+    admin.post(f"/admin/submissions/{sub_id}/results", {
+        "feedback": "Strong argument; tighten the conclusion.", "action": "send",
+        "result_files": [(io.BytesIO(b"%PDF-1.4 marked"), "marked.pdf")]}, content_type="multipart/form-data")
+    (mail,) = [m for m in app.config["MAIL_OUTBOX"] if "feedback is ready" in m["subject"]]
+    assert mail["subject"] == "Your feedback is ready: Climate essay"
+    assert "Read your feedback" in mail["html"] and f"/submissions/{sub_id}" in mail["html"]
+    assert "Climate essay" in mail["html"] and "<!doctype html>" in mail["html"]
+    assert f"/submissions/{sub_id}" in mail["body"]
+    assert "Strong argument; tighten the conclusion." in mail["html"]  # the notes start in the email itself
+    assert "Rita, your reviewer" in mail["html"]
