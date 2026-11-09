@@ -362,7 +362,7 @@ def results(sub_id):
                 # the opening of the notes, so the email itself is worth reading; the rest is on the site
                 "quote": feedback if len(feedback) <= 400 else feedback[:400].rsplit(" ", 1)[0] + "…",
                 "quote_by": g.user["name"].split(" ")[0] + ", your reviewer",
-                "button": "Read your feedback",
+                "button": "Click to view your report",
                 "preheader": "Your reviewer's notes are waiting for you.",
             },
         )

@@ -137,7 +137,7 @@ def test_feedback_ready_email_end_to_end(app, alice, admin):
         "result_files": [(io.BytesIO(b"%PDF-1.4 marked"), "marked.pdf")]}, content_type="multipart/form-data")
     (mail,) = [m for m in app.config["MAIL_OUTBOX"] if "feedback is ready" in m["subject"]]
     assert mail["subject"] == "Your feedback is ready: Climate essay"
-    assert "Read your feedback" in mail["html"] and f"/submissions/{sub_id}" in mail["html"]
+    assert "Click to view your report" in mail["html"] and f"/submissions/{sub_id}" in mail["html"]
     assert "Climate essay" in mail["html"] and "<!doctype html>" in mail["html"]
     assert f"/submissions/{sub_id}" in mail["body"]
     assert "Strong argument; tighten the conclusion." in mail["html"]  # the notes start in the email itself
