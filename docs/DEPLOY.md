@@ -198,9 +198,24 @@ optionally `EMAIL_REPLY_TO`) so customers' replies to emails land there, and add
 
 ## 10. Texts
 
-Set `SMS_PROVIDER` and that provider's keys (see `.env.example`), then `docker compose up -d`.
+Texts go to customers when their feedback is ready, and to you as instant alerts (below). Set
+`SMS_PROVIDER` and that provider's keys (see `.env.example`), then `docker compose up -d`.
 Africa's Talking suits Kenyan numbers. Twilio covers the US and UK, but texts to US numbers need
 the sending number registered first (10DLC or toll-free verification), or carriers block them.
+
+With Africa's Talking: create a **live** app (the `sandbox` username only reaches their simulator),
+top up its SMS balance, and generate an API key. Then, without the key showing on screen:
+
+```bash
+cd ~/nerdaccess && read -rp "Africa's Talking app username: " U && read -rsp "API key: " K && echo && for kv in "SMS_PROVIDER=africastalking" "AT_USERNAME=$U" "AT_API_KEY=$K"; do k=${kv%%=*}; if grep -q "^$k=" .env; then sed -i "s|^$k=.*|$kv|" .env; else echo "$kv" >> .env; fi; done && docker compose up -d
+```
+
+## Instant alerts
+
+**Admin → Messages → Instant alerts**: the email addresses and phone numbers that hear about every
+new order and every payment the moment it happens. They're kept in the database, not in `.env` or the
+code (the repository is public). **Save and send a test** shows straight away whether each one went
+out; every alert is also listed on that page like any other email or text.
 
 ## 11. Google
 

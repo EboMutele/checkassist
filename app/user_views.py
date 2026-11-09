@@ -9,7 +9,7 @@ from flask import (
 from .auth import home_for, login_required
 from .db import execute, get_db, query, utcnow
 from .helpers import FIRST_SENT_SQL, OPEN_STATUSES, count_words, load_timings, status_events_of, timing
-from . import attachments, billing, pricing, local
+from . import alerts, attachments, billing, pricing, local
 from .notify import notify_admins
 from .security import INLINE_PREVIEW_TYPES, validate_upload
 from .storage import get_storage
@@ -187,6 +187,7 @@ def new_submission():
             ) if value],
             "button": "Open in admin",
         })
+        alerts.new_order(sub_id, g.user, title, words, needed, form["instructions"])
         used = f" It used {needed} {'check' if needed == 1 else 'checks'}." if needed else ""
         flash(f"Uploaded.{used} We'll let you know as soon as your feedback is ready.", "success")
         return redirect(url_for("portal.submission", sub_id=sub_id))
