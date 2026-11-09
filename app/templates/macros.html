@@ -97,9 +97,9 @@
     <thead class="visually-hidden"><tr><th scope="col">Plan</th><th scope="col">Price</th><th scope="col">Per check</th>{% if not compact %}<th scope="col">Get it</th>{% endif %}</tr></thead>
     <tbody>
       {% for p in plans %}
-        <tr class="rate rate-{{ p.kind }}">
+        <tr class="rate rate-{{ p.kind }}{{ ' rate-best' if p.best }}">
           <th scope="row">
-            <span class="rate-name">{{ p.name }}</span>
+            <span class="rate-name">{{ p.name }}{% if p.best %} <span class="rate-badge">Best value</span>{% endif %}</span>
             {% if not compact %}<span class="rate-blurb">{{ p.blurb }}</span>{% endif %}
           </th>
           <td class="rate-price"><span class="rate-amount">{{ p.price }}</span>{% if p.period %}<span class="rate-period">{{ p.period }}</span>{% endif %}</td>
@@ -113,10 +113,10 @@
               {% if current_user and current_user.role == 'user' %}
                 <form method="post" action="{{ url_for('billing.checkout', plan_id=p.id) }}">
                   {{ csrf() }}
-                  <button type="submit" class="btn {{ 'btn-primary' if p.kind == 'monthly' else 'btn-quiet' }}">{{ label }}</button>
+                  <button type="submit" class="btn {{ 'btn-primary' if p.best or p.kind == 'monthly' else 'btn-quiet' }}">{{ label }}</button>
                 </form>
               {% else %}
-                <a class="btn {{ 'btn-primary' if p.kind == 'monthly' else 'btn-quiet' }}" href="{{ url_for('auth.register', next=url_for('billing.page')) }}">{{ label }}</a>
+                <a class="btn {{ 'btn-primary' if p.best or p.kind == 'monthly' else 'btn-quiet' }}" href="{{ url_for('auth.register', next=url_for('billing.page')) }}">{{ label }}</a>
               {% endif %}
             </td>
           {% endif %}

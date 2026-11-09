@@ -137,7 +137,8 @@ def fill(text):
         price=pricing.money(pricing.PLANS[0].price),
         lowest=pricing.lowest_per_check(),
         words=words,
-        plan_list=", ".join(plan_list),
+        plan_list=", ".join(plan_list[:-1]) + (" " if plan_list[-1].startswith("or ") else " or ") + plan_list[-1]
+        if len(plan_list) > 1 else "".join(plan_list),
     )
 
 

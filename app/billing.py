@@ -384,6 +384,9 @@ def _record_renewal(conn, sub, reference, data):
 def handle_event(event, data):
     """Apply one verified webhook event."""
     conn = get_db()
+    if event.split(".")[0] in ("subscription", "invoice") and not monthly_currencies():
+        log.warning("Ignored Paystack %s: no monthly plan is on sale", event)
+        return
 
     if event == "charge.success":
         reference = data.get("reference")
@@ -619,13 +622,15 @@ def init_app(app):
     app.register_blueprint(bp)
 
     @app.cli.command("paystack-create-plan")
-    @click.option("--currency", type=click.Choice(sorted(c for c in pricing.PRICES if pricing.has_monthly(c)),
-                                                  case_sensitive=False),
+    @click.option("--currency", type=click.Choice(sorted(pricing.PRICES), case_sensitive=False),
                   default=pricing.CURRENCY_CODE, show_default=True, help="Currency of the monthly plan.")
     def create_plan_command(currency):
         """Create the monthly plan on Paystack and print the setting to save its code in."""
         currency = currency.upper()
         plan = monthly_plan(currency)
+        if plan is None:
+            raise click.ClickException(f"No monthly plan is on sale in {currency}. Add one to PRICES first; "
+                                       "packs need no Paystack plan.")
         data = paystack("POST", "/plan", {
             "name": f"{app.config['APP_NAME']} {plan.name} ({plan.checks} checks, {currency})",
             "interval": "monthly", "amount": subunits(plan.price), "currency": currency,

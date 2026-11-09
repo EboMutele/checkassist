@@ -21,7 +21,7 @@ CURRENCIES = {
 # KES is a local price list, well below the USD one (KSh 199 is about $1.55), for the clients you share
 # /local with. No monthly plan: renewals need a saved card, and local clients mostly pay by M-Pesa.
 PRICES = {
-    "USD": {"single": "4.99", "pack10": "39.99", "pack20": "69.99", "monthly": "240"},
+    "USD": {"single": "4.99", "pack10": "39.99", "pack20": "69.99", "pack80": "240"},
     "KES": {"single": "199", "pack5": "900", "pack10": "1700"},
 }
 WORDS_PER_CHECK = 10000     # one check covers a document up to this many words
@@ -56,6 +56,9 @@ CATALOG = {p.id: p for p in (
          f"Every draft of a term's essays. Use them within {PACK_VALID_MONTHS} months."),
     Plan("pack20", "20 checks", 20, Decimal(0), "pack",
          f"For a full year of coursework or applications. Use them within {PACK_VALID_MONTHS} months."),
+    Plan("pack80", "80 checks", 80, Decimal(0), "pack",
+         f"For tutors, writing centres and busy terms. Use them within {PACK_VALID_MONTHS} months."),
+    # Kept for later: the Paystack subscription code still handles it, but no price list offers it now.
     Plan("monthly", "Monthly", 80, Decimal(0), "monthly",
          "80 checks every month for tutors and teams. Unused checks carry over one month. Cancel anytime."),
 )}
@@ -119,14 +122,21 @@ def ladder_problems(plans=PLANS):
     return problems
 
 
+def best_value(currency=CURRENCY_CODE) -> Plan:
+    """The option with the lowest price per check (ties go to the bigger one)."""
+    return min(reversed(plans(currency)), key=lambda p: p.price / p.checks)
+
+
 def plans_for_display(currency=CURRENCY_CODE):
     priced = plans(currency)
+    best = best_value(currency)
     out = []
     for p in priced:
         out.append({
             "id": p.id, "name": p.name, "checks": p.checks, "kind": p.kind, "blurb": p.blurb, "currency": currency,
             "price": money(p.price, currency), "per_check": money(p.per_check, currency),
             "savings": savings_pct(p, priced), "period": "/month" if p.kind == "monthly" else "",
+            "best": p.id == best.id and len(priced) > 1,
         })
     return out
 

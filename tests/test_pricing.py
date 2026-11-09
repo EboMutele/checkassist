@@ -1,3 +1,4 @@
+import re
 from decimal import Decimal
 
 from app import pricing
@@ -37,10 +38,21 @@ def test_money_and_word_caps():
 
 def test_pricing_page_lists_every_plan(client):
     page = client.get("/pricing").get_data(as_text=True)
-    for text in ("Single check", "$4.99", "10 checks", "$39.99", "20 checks", "$69.99", "Monthly", "$240",
-                 "save 20%", "save 30%", "save 40%", "10,000 words", "/month", "15,000-word"):
+    for text in ("Single check", "$4.99", "10 checks", "$39.99", "20 checks", "$69.99", "80 checks", "$240",
+                 "save 20%", "save 30%", "save 40%", "10,000 words", "15,000-word"):
         assert text in page, text
     assert "2 checks" in page  # the worked example for a long document
+
+
+def test_80_checks_is_a_one_off_pack_marked_best_value(client):
+    """No subscription to set up: the 80-check option is bought once, like the other packs."""
+    best = pricing.best_value()
+    assert (best.id, best.kind, best.checks, best.price, best.per_check) == ("pack80", "pack", 80, Decimal("240"), Decimal("3.00"))
+    page = client.get("/pricing").get_data(as_text=True)
+    assert page.count('class="rate-badge">Best value<') == 1
+    assert re.search(r'rate-pack rate-best">\s*<th scope="row">\s*<span class="rate-name">80 checks', page)
+    assert "/month" not in page and "Monthly" not in page and "Cancel anytime" not in page
+    assert "Paid once, no subscription." in page and "Buy 80 checks" in page
 
 
 def test_homepage_and_nav_point_to_pricing(client):

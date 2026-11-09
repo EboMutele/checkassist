@@ -209,7 +209,7 @@ def _age_last_grant(app, days):
         execute("UPDATE subscriptions SET last_grant_at = ?", (then,))
 
 
-def test_monthly_plan_grants_80_and_renewals_grant_again(pay_app, nia, fake):
+def test_monthly_plan_grants_80_and_renewals_grant_again(with_monthly, pay_app, nia, fake):
     _subscribe(pay_app, nia, fake)
     assert _balance(pay_app, nia.uid) == 80
     page = nia.get("/billing/").get_data(as_text=True)
@@ -232,14 +232,14 @@ def test_monthly_plan_grants_80_and_renewals_grant_again(pay_app, nia, fake):
     assert _payment(pay_app, reference="renew_1")["kind"] == "renewal"
 
 
-def test_unused_monthly_checks_carry_over_one_month_then_expire(pay_app, nia, fake):
+def test_unused_monthly_checks_carry_over_one_month_then_expire(with_monthly, pay_app, nia, fake):
     _subscribe(pay_app, nia, fake)
     with pay_app.app_context():
         assert billing.balance(nia.uid, now=datetime.now(timezone.utc) + timedelta(days=45)) == 80   # carried over
         assert billing.balance(nia.uid, now=datetime.now(timezone.utc) + timedelta(days=63)) == 0    # gone after 2 months
 
 
-def test_cancel_and_failed_renewal(pay_app, nia, fake):
+def test_cancel_and_failed_renewal(with_monthly, pay_app, nia, fake):
     _subscribe(pay_app, nia, fake)
     _webhook(pay_app, "invoice.payment_failed", {"subscription": {"subscription_code": "SUB_1"}, "customer": {"email": "nia@example.com"}})
     assert "Payment failed" in nia.get("/billing/").get_data(as_text=True)
@@ -250,13 +250,13 @@ def test_cancel_and_failed_renewal(pay_app, nia, fake):
     assert _balance(pay_app, nia.uid) == 80  # keeps what they paid for
 
 
-def test_update_card_goes_to_paystack(pay_app, nia, fake):
+def test_update_card_goes_to_paystack(with_monthly, pay_app, nia, fake):
     _subscribe(pay_app, nia, fake)
     r = nia.post("/billing/subscription/card")
     assert r.status_code == 303 and r.headers["Location"].startswith("https://paystack.com/manage/")
 
 
-def test_cannot_buy_monthly_twice(pay_app, nia, fake):
+def test_cannot_buy_monthly_twice(with_monthly, pay_app, nia, fake):
     _subscribe(pay_app, nia, fake)
     r = nia.post("/billing/checkout/monthly", follow_redirects=True)
     assert "already have the monthly plan" in r.get_data(as_text=True)
@@ -296,7 +296,7 @@ def test_long_documents_use_one_check_per_10000_words(pay_app, nia, fake):
     assert f"Review of CA-{sid:05d}" in hist and "Single check" in hist
 
 
-def test_spends_the_soonest_expiring_checks_first(pay_app, nia, fake):
+def test_spends_the_soonest_expiring_checks_first(with_monthly, pay_app, nia, fake):
     _subscribe(pay_app, nia, fake)              # 80 expiring in 2 months
     ref = _checkout(nia, "pack10")              # 10 expiring in 12 months
     fake.paid(ref, 3999)
@@ -363,7 +363,7 @@ def test_signup_free_checks_setting(tmp_path):
     assert "Welcome checks: <strong>1</strong> left" in page
 
 
-def test_paystack_create_plan_command(pay_app, fake):
+def test_paystack_create_plan_command(with_monthly, pay_app, fake):
     result = pay_app.test_cli_runner().invoke(args=["paystack-create-plan"])
     assert "PAYSTACK_MONTHLY_PLAN_CODE=PLN_monthly" in result.output
     assert fake.calls[-1]["payload"] == {"name": "NerdAccess Monthly (80 checks, USD)", "interval": "monthly",
@@ -410,3 +410,13 @@ def test_a_restricted_key_is_flagged_because_webhooks_are_signed_with_the_secret
     signed_with_sk = hmac.new(b"sk_test_main", body, hashlib.sha512).hexdigest()
     r = app.test_client().post("/billing/webhook", data=body, headers={"x-paystack-signature": signed_with_sk})
     assert r.status_code == 401 and "main sk_ secret key" in caplog.text
+
+
+def test_subscription_events_are_ignored_while_no_monthly_plan_is_sold(pay_app, caplog):
+    """The 80 checks are a one-off pack now; a stray subscription event must not crash the webhook."""
+    from app import pricing
+    assert not pricing.has_monthly("USD")
+    with pay_app.test_request_context():
+        for event in ("subscription.create", "invoice.update", "invoice.payment_failed", "subscription.disable"):
+            billing.handle_event(event, {"customer": {"email": "x@example.com"}, "subscription": {}})
+    assert caplog.text.count("no monthly plan is on sale") == 4
