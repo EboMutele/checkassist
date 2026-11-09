@@ -48,6 +48,21 @@ records there, and at your registrar change the nameservers to `ns1.digitalocean
 `ns2.digitalocean.com` and `ns3.digitalocean.com`. Either way, changes can take from minutes to a few
 hours. Check with `dig +short nerdaccess.store` (it should print the Droplet's address).
 
+## Quick way: steps 4 to 6 and 8 in one command
+
+In the Droplet's console (as root):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/EboMutele/checkassist/main/deploy/setup.sh -o setup.sh && bash setup.sh
+```
+
+It downloads the code, writes `.env` with a fresh `SECRET_KEY`, starts the site, waits until
+nerdaccess.store points at the Droplet before asking for the HTTPS certificate, sets up nightly
+backups and adds `nerdaccess-update` for putting new code live. Run it again if the console
+disconnects. Then create your admin login (step 6) and add Paystack (step 7). The rest of this
+section is the same thing by hand. The script clones over HTTPS, so it needs the repository to be
+public; for a private one, follow step 4.
+
 ## 4. Get the code onto the server
 
 ```bash
