@@ -330,7 +330,7 @@ def results(sub_id):
         )
         emailed = "sent" in emails
         add_event(sub_id, g.user["id"], "email", "Email sent." if emailed else (
-            "No email sent: email isn't set up (SMTP_HOST)." if "not_configured" in emails
+            "No email sent: email isn't set up (RESEND_API_KEY or SMTP_HOST)." if "not_configured" in emails
             else "The email failed. See Messages."), internal=True)
         get_db().commit()
         texted = _text_feedback_ready(sub, resend)
@@ -446,7 +446,8 @@ def messages():
     cfg = current_app.config
     return render_template("admin/messages.html", rows=rows, show=show, q=q,
                            sent=counts["sent"] or 0, problems=counts["problems"] or 0,
-                           email_ready=bool(cfg.get("SMTP_HOST")), sms_ready=bool(cfg.get("SMS_PROVIDER")))
+                           email_ready=bool(cfg.get("RESEND_API_KEY") or cfg.get("SMTP_HOST")),
+                           sms_ready=bool(cfg.get("SMS_PROVIDER")))
 
 
 @bp.route("/users/<int:user_id>/currency", methods=("POST",))

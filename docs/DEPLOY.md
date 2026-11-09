@@ -161,25 +161,40 @@ crontab -e
 Those copies sit on the same Droplet. Download one now and then, or copy them to DigitalOcean Spaces,
 so a lost server doesn't take every copy with it.
 
-## 9. Email from @nerdaccess.store
+## 9. Email
 
-You need two things:
+**Sending** ("feedback ready", questions, alerts to reviewers) goes through **Resend**'s HTTPS API.
+DigitalOcean blocks the usual SMTP ports, so plain SMTP on 587 doesn't work from a Droplet.
 
-- **Sending** (receipts, "feedback ready", questions): an email-sending service such as Postmark,
-  Resend, Brevo or Amazon SES. Add nerdaccess.store in their dashboard. They give you DNS records
-  (SPF, DKIM, and a return-path or bounce record) to add where your DNS lives. Then fill the `SMTP_*`
-  settings and `SMTP_FROM=NerdAccess <no-reply@nerdaccess.store>`.
-- **Receiving** at support@nerdaccess.store: a mailbox (Zoho Mail, Google Workspace) or a forwarding
-  service to your existing inbox. Each gives you MX records to add.
+1. In Resend, add the domain **mail.nerdaccess.store** (EU region). Sending from a subdomain keeps
+   automated mail from affecting the reputation of nerdaccess.store itself.
+2. Add the records Resend lists (a DKIM TXT on `resend._domainkey.mail`, an MX and an SPF TXT on
+   `send.mail`, a CNAME on `rsend.mail`) in DigitalOcean's DNS, plus DMARC on the main domain:
 
-Also add a DMARC record so mail providers trust your domain:
+   | Type | Name | Value |
+   |---|---|---|
+   | TXT | `_dmarc` | `v=DMARC1; p=none;` |
 
-| Type | Name | Value |
-|---|---|---|
-| TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:support@nerdaccess.store` |
+   Then press Verify in Resend.
+3. Create an API key with **Sending access** for that domain only, and save it on the server without
+   it showing on screen:
 
-Keep **one** SPF record (`v=spf1 …`) that includes every service that sends as nerdaccess.store.
-Two SPF records break both. **Admin → Messages** shows whether emails went out.
+   ```bash
+   cd ~/nerdaccess && read -rsp "Resend API key: " K && echo && for kv in "RESEND_API_KEY=$K" "EMAIL_FROM=NerdAccess <notifications@mail.nerdaccess.store>"; do k=${kv%%=*}; if grep -q "^$k=" .env; then sed -i "s|^$k=.*|$kv|" .env; else echo "$kv" >> .env; fi; done && docker compose up -d
+   ```
+4. Send yourself a test:
+
+   ```bash
+   read -rp "Send a test email to: " TO && docker compose exec -T -e TO="$TO" app python -c "import os; from wsgi import app; from app.notify import send_email; app.app_context().push(); print(send_email(os.environ['TO'], 'NerdAccess test email', 'If you can read this, email works.'))"
+   ```
+
+   It prints `sent`, or `failed` with the reason under **Admin → Messages**.
+
+**Receiving** at support@nerdaccess.store: a mailbox (Zoho Mail, Google Workspace) or a forwarding
+service. Each gives you MX records for the main domain. Once it works, set `SUPPORT_EMAIL` (and
+optionally `EMAIL_REPLY_TO`) so customers' replies to emails land there, and add
+`rua=mailto:support@nerdaccess.store` to the DMARC record to get reports. Keep **one** SPF record
+(`v=spf1 …`) on the main domain; Resend's lives on `send.mail` and doesn't clash.
 
 ## 10. Texts
 
