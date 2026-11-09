@@ -1,0 +1,19 @@
+# What `docker build` leaves out of the app image.
+# Settings stay on the server: .env holds the secret key and payment keys, and is passed in at run time
+# (env_file in docker-compose.yml). Copied into the image it would also be unreadable by the app's user
+# once .env is locked to root (chmod 600), which stops the app from starting.
+.env
+.env.*
+!.env.example
+# Data, history and local clutter
+instance/
+*.sqlite3
+*.sqlite3-*
+.git
+.github
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+.DS_Store
