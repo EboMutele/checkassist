@@ -180,4 +180,94 @@
   }
   setInterval(check, every);
   document.addEventListener("visibilitychange", check);
+  // Attachments on messages: paste a screenshot into the message, drop files on the form, preview, remove.
+  document.querySelectorAll("[data-attach]").forEach(function (box) {
+    var input = box.querySelector("input[type=file]");
+    var list = box.querySelector("[data-attach-list]");
+    var form = box.closest("form");
+    var textarea = form && form.querySelector("textarea");
+    var MAX = 5;
+    var canSet = (function () { try { return !!new DataTransfer(); } catch (e) { return false; } })();
+
+    function current() { return Array.prototype.slice.call(input.files || []); }
+    function render() {
+      list.textContent = "";
+      current().forEach(function (file, i) {
+        var li = document.createElement("li");
+        li.className = "attach-item";
+        if (/^image\/(png|jpeg|webp)$/.test(file.type)) {
+          var img = document.createElement("img");
+          img.alt = "";
+          var reader = new FileReader();
+          reader.onload = function () { img.src = reader.result; };  // data: URL (the page's CSP allows data: images)
+          reader.readAsDataURL(file);
+          li.appendChild(img);
+        }
+        var name = document.createElement("span");
+        name.textContent = file.name;
+        li.appendChild(name);
+        if (canSet) {
+          var remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "link-button";
+          remove.textContent = "Remove";
+          remove.setAttribute("aria-label", "Remove " + file.name);
+          remove.addEventListener("click", function () {
+            var files = current();
+            files.splice(i, 1);
+            setFiles(files);
+          });
+          li.appendChild(remove);
+        }
+        list.appendChild(li);
+      });
+    }
+    function setFiles(files) {
+      var dt = new DataTransfer();
+      files.slice(0, MAX).forEach(function (f) { dt.items.add(f); });
+      input.files = dt.files;
+      render();
+    }
+    function add(files) {
+      if (!canSet || !files.length) return false;
+      setFiles(current().concat(files));
+      return true;
+    }
+
+    input.addEventListener("change", render);
+
+    if (textarea) {
+      textarea.addEventListener("paste", function (ev) {
+        var pasted = Array.prototype.slice.call((ev.clipboardData && ev.clipboardData.files) || []);
+        var images = pasted.filter(function (f) { return /^image\/(png|jpeg|webp)$/.test(f.type); });
+        if (!images.length) return;  // ordinary text paste
+        var stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-");
+        var already = current().length;
+        var named = images.map(function (f, n) {
+          var ext = f.type.split("/")[1].replace("jpeg", "jpg");
+          return new File([f], "screenshot-" + stamp + "-" + (already + n + 1) + "." + ext, { type: f.type });
+        });
+        if (add(named)) ev.preventDefault();
+      });
+    }
+
+    function hasFiles(ev) {
+      return ev.dataTransfer && Array.prototype.indexOf.call(ev.dataTransfer.types || [], "Files") !== -1;
+    }
+    form.addEventListener("dragover", function (ev) {
+      if (!hasFiles(ev) || !canSet) return;
+      ev.preventDefault();
+      form.classList.add("is-over");
+    });
+    form.addEventListener("dragleave", function (ev) {
+      if (!form.contains(ev.relatedTarget)) form.classList.remove("is-over");
+    });
+    form.addEventListener("drop", function (ev) {
+      form.classList.remove("is-over");
+      if (!hasFiles(ev) || !canSet) return;
+      ev.preventDefault();
+      add(Array.prototype.slice.call(ev.dataTransfer.files));
+    });
+  });
+
 })();

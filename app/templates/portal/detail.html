@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros.html" import status_pill, csrf, file_row, timeline with context %}
+{% from "macros.html" import status_pill, csrf, file_row, timeline, attach_field with context %}
 {% block title %}{{ sub.title }}{% endblock %}
 {% block content %}
 <p class="crumbs"><a href="{{ url_for('portal.dashboard') }}">Your documents</a></p>
@@ -85,11 +85,12 @@
 
   <section id="conversation" aria-labelledby="conv-title">
     <h2 id="conv-title">Messages and activity</h2>
-    {{ timeline(events, viewer='user') }}
-    <form method="post" action="{{ url_for('portal.reply', sub_id=sub.id) }}" class="form compose">
+    {{ timeline(events, viewer='user', attached=attached) }}
+    <form method="post" action="{{ url_for('portal.reply', sub_id=sub.id) }}" class="form compose" enctype="multipart/form-data">
       {{ csrf() }}
       <label for="body">{{ 'Reply to your reviewer' if sub.status == 'needs_info' else 'Message your reviewer' }}</label>
-      <textarea id="body" name="body" rows="4" maxlength="5000" required></textarea>
+      <textarea id="body" name="body" rows="4" maxlength="5000"></textarea>
+      {{ attach_field(attach_accept) }}
       <button type="submit" class="btn btn-primary">Send message</button>
     </form>
   </section>

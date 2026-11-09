@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros.html" import status_pill, csrf, file_row, timeline, due with context %}
+{% from "macros.html" import status_pill, csrf, file_row, timeline, due, attach_field with context %}
 {% block title %}{{ sub.title }}{% endblock %}
 {% block body_class %}is-wide{% endblock %}
 {% block content %}
@@ -100,8 +100,9 @@
         <label for="feedback">Written feedback</label>
         <textarea id="feedback" name="feedback" rows="10" maxlength="50000" placeholder="Start with the most important change, then work down.">{{ sub.feedback }}</textarea>
 
-        <label for="result_files">Attach reviewed files</label>
-        <input id="result_files" name="result_files" type="file" multiple accept=".pdf,.doc,.docx,.odt,.rtf,.txt">
+        <label for="result_files">Attach reviewed files or screenshots</label>
+        <input id="result_files" name="result_files" type="file" multiple accept="{{ attach_accept }}" aria-describedby="result-files-hint">
+        <p id="result-files-hint" class="hint">Marked-up documents, or screenshots ({{ 'PNG, JPG or WebP' }}), up to 5 at a time.</p>
 
         <div class="button-row">
           <button type="submit" name="action" value="save" class="btn btn-quiet">Save draft</button>
@@ -113,8 +114,8 @@
 
     <section class="panel-block" id="conversation">
       <h2>Messages and activity</h2>
-      {{ timeline(events, viewer='admin') }}
-      <form method="post" action="{{ url_for('admin.message', sub_id=sub.id) }}" class="form compose" data-compose>
+      {{ timeline(events, viewer='admin', attached=attached) }}
+      <form method="post" action="{{ url_for('admin.message', sub_id=sub.id) }}" class="form compose" data-compose enctype="multipart/form-data">
         {{ csrf() }}
         <fieldset class="segmented">
           <legend class="visually-hidden">Who sees this</legend>
@@ -122,7 +123,8 @@
           <label><input type="radio" name="visibility" value="internal"> Internal note</label>
         </fieldset>
         <label for="msg-body" class="visually-hidden">Message</label>
-        <textarea id="msg-body" name="body" rows="4" maxlength="5000" required></textarea>
+        <textarea id="msg-body" name="body" rows="4" maxlength="5000"></textarea>
+        {{ attach_field(attach_accept, 'Attach screenshots or files') }}
         <label class="check" data-ask>
           <input type="checkbox" name="request_info" value="1">
           <span>This is a question. Mark as waiting on the customer.</span>
