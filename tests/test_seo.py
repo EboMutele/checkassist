@@ -251,3 +251,12 @@ def test_public_pages_never_promise_to_beat_turnitin_or_ai_detectors(live, clien
     ai = client.get("/ai-detection").get_data(as_text=True)
     assert "Can you make AI-written text pass a detector?" in ai and "<p>No. We review your own writing" in ai
     assert "isn't affiliated with Chegg" in client.get("/chegg-alternative").get_data(as_text=True)
+
+
+def test_env_example_has_no_notes_where_values_go():
+    """Docker Compose reads `KEY=   # note` as the value "# note", not as blank: on the live server that
+    put "# e.g. support@…" in the footer and a fake Paystack key in the settings."""
+    import pathlib
+    text = (pathlib.Path(__file__).resolve().parent.parent / ".env.example").read_text()
+    bad = [line for line in text.splitlines() if re.match(r"^[A-Z_]+=\s*#", line)]
+    assert not bad, bad
