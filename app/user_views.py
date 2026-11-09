@@ -19,6 +19,12 @@ bp = Blueprint("portal", __name__)
 _CTRL_RE = re.compile(r"[\x00-\x1f\x7f]")
 
 
+def title_from_filename(name: str) -> str:
+    """'History_essay-final v2.docx' -> 'History essay final v2': the title when none is given."""
+    stem = clean_filename(name or "").rsplit(".", 1)[0]
+    return re.sub(r"\s+", " ", re.sub(r"[_\-]+", " ", stem)).strip()[:200] or "Untitled document"
+
+
 def clean_filename(name: str) -> str:
     name = os.path.basename(name.replace("\\", "/"))
     name = _CTRL_RE.sub("", name).strip() or "document"
@@ -129,14 +135,11 @@ def new_submission():
         form["instructions"] = request.form.get("instructions", "").strip()[:5000]
         upload = request.files.get("document")
         ext, error = validate_upload(upload)
-        if not form["title"]:
-            error = "Give your document a title."
-        elif not error and not request.form.get("confirm_rights"):
-            error = "Confirm that you have the right to share this document."
         if error:
             flash(error, "error")
             return render_template("portal/new.html", form=form, **_upload_context()), 400
 
+        title = form["title"] or title_from_filename(upload.filename)
         storage = get_storage()
         stored_name, size, sha = storage.save(upload)
         words = count_words(storage.path(stored_name), ext)
@@ -148,7 +151,7 @@ def new_submission():
             cur = conn.execute(
                 "INSERT INTO submissions (user_id, title, instructions, words, checks_spent, created_at, updated_at)"
                 " VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (g.user["id"], form["title"], form["instructions"], words, needed, now, now),
+                (g.user["id"], title, form["instructions"], words, needed, now, now),
             )
             sub_id = cur.lastrowid
             conn.execute(
@@ -171,7 +174,7 @@ def new_submission():
             conn.rollback()
             storage.delete(stored_name)
             raise
-        notify_admins(f"New document from {g.user['name']}: {form['title']}", sub_id)
+        notify_admins(f"New document from {g.user['name']}: {title}", sub_id)
         used = f" It used {needed} {'check' if needed == 1 else 'checks'}." if needed else ""
         flash(f"Uploaded.{used} We'll let you know as soon as your feedback is ready.", "success")
         return redirect(url_for("portal.submission", sub_id=sub_id))

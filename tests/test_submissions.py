@@ -33,11 +33,28 @@ def test_rejects_wrong_extension_fake_pdf_empty_and_binary_txt(alice):
         assert expected in body or "file is empty" in body, (name, body[:300])
 
 
-def test_requires_title_and_rights_confirmation(alice):
-    r = upload(alice, title="")
-    assert r.status_code == 400 and "Give your document a title" in r.get_data(as_text=True)
-    r = upload(alice, confirm_rights="")
-    assert r.status_code == 400 and "right to share" in r.get_data(as_text=True)
+def test_title_is_optional_and_falls_back_to_the_file_name(app, alice):
+    page = alice.get("/submit").get_data(as_text=True)
+    assert 'id="title" name="title" maxlength="200"' in page and "(optional)" in page
+    assert "confirm_rights" not in page and "permission to share" not in page
+    assert "By uploading, you confirm you can share this document." in page  # a note, not a checkbox
+    r = upload(alice, title="", filename="History_essay-final  v2.pdf")
+    assert r.status_code == 302
+    with app.app_context():
+        from app.db import query
+        assert query("SELECT title FROM submissions ORDER BY id DESC LIMIT 1", one=True)["title"] == "History essay final v2"
+    r = upload(alice, title="   ", filename="___.pdf")
+    assert r.status_code == 302
+    with app.app_context():
+        from app.db import query
+        assert query("SELECT title FROM submissions ORDER BY id DESC LIMIT 1", one=True)["title"] == "Untitled document"
+
+
+def test_a_given_title_is_kept(app, alice):
+    assert upload(alice, title="My essay", filename="draft.pdf").status_code == 302
+    with app.app_context():
+        from app.db import query
+        assert query("SELECT title FROM submissions ORDER BY id DESC LIMIT 1", one=True)["title"] == "My essay"
 
 
 def test_oversize_upload_returns_413(alice):

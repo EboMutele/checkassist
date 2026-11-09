@@ -114,7 +114,6 @@ def upload(session, title="My essay", content=PDF_BYTES, filename="essay.pdf", *
     data = {
         "title": title,
         "instructions": "Check my argument.",
-        "confirm_rights": "1",
         "document": (io.BytesIO(content), filename),
     }
     data.update(extra)
