@@ -400,3 +400,13 @@ def test_send_survives_a_non_json_answer(monkeypatch):
         def read(self): return b"error code: 1010"
     monkeypatch.setattr(billing.urllib.request, "urlopen", lambda req, timeout: Resp())
     assert billing._send("GET", "https://api.paystack.co/x", {}, None) == (403, {"_raw": "error code: 1010"})
+
+
+def test_a_restricted_key_is_flagged_because_webhooks_are_signed_with_the_secret_key(tmp_path, caplog):
+    app = create_app({"TESTING": True, "SECRET_KEY": "t", "DATABASE": str(tmp_path / "d.sqlite3"),
+                      "UPLOAD_DIR": str(tmp_path / "u"), "PAYSTACK_SECRET_KEY": "rk_test_abc"})
+    assert "restricted key" in caplog.text
+    body = json.dumps({"event": "charge.success", "data": {}}).encode()
+    signed_with_sk = hmac.new(b"sk_test_main", body, hashlib.sha512).hexdigest()
+    r = app.test_client().post("/billing/webhook", data=body, headers={"x-paystack-signature": signed_with_sk})
+    assert r.status_code == 401 and "main sk_ secret key" in caplog.text

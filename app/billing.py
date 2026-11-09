@@ -560,6 +560,9 @@ def webhook():
     sent = request.headers.get("x-paystack-signature", "")
     expected = hmac.new(secret.encode(), raw, hashlib.sha512).hexdigest() if secret else ""
     if not secret or not hmac.compare_digest(sent, expected):
+        log.warning("Paystack webhook rejected: signature doesn't match PAYSTACK_SECRET_KEY%s",
+                    " (that's a restricted rk_ key; Paystack signs webhooks with the main sk_ secret key)"
+                    if secret.startswith("rk_") else "")
         abort(401)
     try:
         event = json.loads(raw)
@@ -610,6 +613,9 @@ def update_card():
 
 
 def init_app(app):
+    if app.config["PAYSTACK_SECRET_KEY"].startswith("rk_"):
+        log.warning("PAYSTACK_SECRET_KEY is a restricted key (rk_...). Paystack signs webhooks with the main secret "
+                    "key (sk_...), so webhooks will be rejected and late M-Pesa payments won't add checks. Use sk_.")
     app.register_blueprint(bp)
 
     @app.cli.command("paystack-create-plan")
