@@ -5,6 +5,7 @@
 {% block content %}
 {% set monthly = plans|selectattr('kind', 'equalto', 'monthly')|first %}
 {% set pack = plans|selectattr('kind', 'equalto', 'pack')|first %}
+{% set best = plans|selectattr('best')|first %}
 <header class="pricing-head">
   <h1>Pricing</h1>
   <p class="lede">Pay for one check at a time, or save with a pack. Every check is read by a person, start to finish.</p>
@@ -20,7 +21,8 @@
   </div>
   <dl class="pricing-facts">
     <div><dt>Packs</dt><dd>Use your checks any time in the next {{ pack_months }} months.</dd></div>
-    <div><dt>Monthly</dt><dd>{{ monthly.checks }} checks each month for {{ monthly.price }}. Anything unused carries over one month. Cancel anytime.</dd></div>
+    {% if monthly %}<div><dt>Monthly</dt><dd>{{ monthly.checks }} checks each month for {{ monthly.price }}. Anything unused carries over one month. Cancel anytime.</dd></div>{% endif %}
+    {% if best and best.kind == 'pack' %}<div><dt>Best value</dt><dd>{{ best.checks }} checks for {{ best.price }}, {{ best.per_check }} a check. Paid once, no subscription.</dd></div>{% endif %}
     <div><dt>Questions from your reviewer</dt><dd>Free. Replying to your reviewer never uses a check.</dd></div>
   </dl>
 </section>
@@ -30,7 +32,7 @@
   <div class="faq-list">
     <details>
       <summary>Which option should I pick?</summary>
-      <p>If you only need one paper read, a single check. If you'll want each draft checked this term, {{ pack.checks }} checks saves you {{ pack.savings }}% on every one. The monthly plan suits tutors, writing centres and teams that send papers every week.</p>
+      <p>If you only need one paper read, a single check. If you'll want each draft checked this term, {{ pack.checks }} checks saves you {{ pack.savings }}% on every one.{% if monthly %} The monthly plan suits tutors, writing centres and teams that send papers every week.{% elif best and best.id != pack.id %} {{ best.checks }} checks is the best value, {{ best.savings }}% off every check: it suits tutors, writing centres and anyone sending papers every week.{% endif %}</p>
     </details>
     <details>
       <summary>Does a revised draft cost another check?</summary>

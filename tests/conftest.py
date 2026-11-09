@@ -124,3 +124,12 @@ def sub_id_from(resp):
     m = re.search(r"/submissions/(\d+)", resp.headers.get("Location", ""))
     assert m, resp.headers.get("Location")
     return int(m.group(1))
+
+
+@pytest.fixture
+def with_monthly(monkeypatch):
+    """The monthly subscription is switched off (no price list offers it), but its code is kept for later.
+    Tests of that code switch it back on with the public price list it had."""
+    from app import pricing
+    monkeypatch.setitem(pricing.PRICES, "USD", {"single": "4.99", "pack10": "39.99", "pack20": "69.99", "monthly": "240"})
+    monkeypatch.setattr(pricing, "PLANS", pricing.plans("USD"))

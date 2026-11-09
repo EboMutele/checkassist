@@ -46,8 +46,9 @@ def test_local_prices_are_the_ones_you_set():
         ("single", 1, Decimal("199")), ("pack5", 5, Decimal("900")), ("pack10", 10, Decimal("1700"))]
     assert [pricing.money(p.per_check, "KES") for p in kes] == [f"KSh{NBSP}199", f"KSh{NBSP}180", f"KSh{NBSP}170"]
     assert pricing.ladder_problems(kes) == []
-    assert not pricing.has_monthly("KES") and pricing.has_monthly("USD")
-    assert [p.id for p in pricing.PLANS] == ["single", "pack10", "pack20", "monthly"]  # public prices untouched
+    assert not pricing.has_monthly("KES") and not pricing.has_monthly("USD")
+    assert [p.id for p in pricing.PLANS] == ["single", "pack10", "pack20", "pack80"]  # public prices untouched
+    assert pricing.best_value("KES").id == "pack10"
 
 
 # ---- private, but shareable ---------------------------------------------------------------

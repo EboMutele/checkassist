@@ -774,10 +774,11 @@ table.queue { width: 100%; border-collapse: collapse; background: var(--paper); 
 .rate-unit { color: var(--ink-2); font-size: .9375rem; white-space: nowrap; }
 .rate-unit > span:first-child { display: block; }
 .rate-save { display: inline-block; font-family: var(--hand); font-weight: 700; font-size: 1.4rem; line-height: 1.1; color: var(--red); transform: rotate(-4deg); transform-origin: left center; margin-top: 2px; }
-.rate-monthly .rate-save { padding: 0 9px 1px; border: 2px solid var(--red); border-radius: 52% 46% 55% 44% / 58% 52% 48% 44%; }
+.rate-monthly .rate-save, .rate-best .rate-save { padding: 0 9px 1px; border: 2px solid var(--red); border-radius: 52% 46% 55% 44% / 58% 52% 48% 44%; }
+.rate-badge { display: inline-block; vertical-align: .2em; margin-left: 6px; padding: 2px 9px; border-radius: 999px; background: var(--red); color: #fff; font-family: var(--sans); font-size: .75rem; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; white-space: nowrap; }
 .rate-action { text-align: right; padding-right: 0 !important; }
 .rate-action .btn { white-space: nowrap; min-width: 150px; }
-.rate-monthly th { box-shadow: inset 3px 0 0 var(--red); padding-left: 14px; }
+.rate-monthly th, .rate-best th { box-shadow: inset 3px 0 0 var(--red); padding-left: 14px; }
 .rate-card-compact { margin-bottom: 0; }
 .rate-card-compact .rates th, .rate-card-compact .rates td { padding: 14px 10px; }
 .rate-card-compact .rate-name { font-size: 1.1875rem; }
