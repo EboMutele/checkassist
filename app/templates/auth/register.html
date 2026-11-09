@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% from "macros.html" import csrf with context %}
 {% block title %}Create account{% endblock %}
+{% block head_extra %}
+  <noscript><link rel="stylesheet" href="{{ url_for('static', filename='noscript.css') }}"></noscript>
+  <script src="{{ url_for('static', filename='phone-zones.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='phone.js') }}" defer></script>
+{% endblock %}
 {% block content %}
 <section class="narrow auth sheet">
   <h1>Create your account</h1>

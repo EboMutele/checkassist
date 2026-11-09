@@ -132,6 +132,22 @@ input[type="text"], input[type="email"], input[type="password"], input[type="sea
 textarea { resize: vertical; min-height: 6em; line-height: 1.5; }
 input:focus, textarea:focus, select:focus { border-color: var(--ink); outline: 3px solid var(--red-soft); outline-offset: 0; }
 ::placeholder { color: var(--ink-3); }
+
+/* Mobile number: compact "🇰🇪 +254" shown over the native country select, which stays fully usable
+   (it's invisible, on top, and gets every click, tap and key). phone.js keeps the label in step. */
+.phone-input { display: flex; gap: 8px; align-items: stretch; }
+.phone-input input { flex: 1 1 auto; min-width: 0; }
+.phone-cc { position: relative; flex: 0 0 auto; }
+.phone-cc-shown {
+  display: flex; align-items: center; height: 100%; white-space: nowrap; font-variant-numeric: tabular-nums;
+  border: 1.5px solid var(--rule-strong); border-radius: var(--r-ctl); background: var(--paper); padding: 10px 32px 10px 12px;
+}
+.phone-cc-shown::after {
+  content: ""; position: absolute; right: 13px; top: 50%; width: 6px; height: 6px; margin-top: -5px;
+  border: solid var(--ink-2); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg);
+}
+.phone-cc select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.phone-cc:focus-within .phone-cc-shown { border-color: var(--ink); outline: 3px solid var(--red-soft); }
 input[type="file"] { font: inherit; font-size: .9375rem; max-width: 100%; }
 .hint { margin: 0; font-size: .875rem; color: var(--ink-2); }
 .check { display: flex; gap: 10px; align-items: flex-start; font-weight: 400; margin-top: 14px; }

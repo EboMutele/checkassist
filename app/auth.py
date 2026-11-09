@@ -5,7 +5,7 @@ from functools import wraps
 from flask import Blueprint, abort, current_app, flash, g, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash
 
-from . import local, pricing
+from . import local, phone as phone_numbers, pricing
 from .db import create_user, execute, get_db, query, utcnow
 from .security import csrf_token, login_throttle
 from .sms import normalize_phone
@@ -28,6 +28,16 @@ def read_phone(raw, cc=None):
         return None, "Enter your mobile number so we can text you when your feedback is ready."
     phone = normalize_phone(raw, cc)
     return (phone, None) if phone else (None, phone_error(cc))
+
+def read_phone_field(raw, cc=None):
+    """The number from the country picker + number box. Forms without the picker (and older clients)
+    fall back to read_phone, which assumes `cc` for numbers typed without +."""
+    picked = request.form.get("phone_country")
+    if picked is None:
+        return read_phone(raw, cc)
+    number, _, error = phone_numbers.parse(raw, picked)
+    return number, error
+
 
 bp = Blueprint("auth", __name__)
 
@@ -97,7 +107,7 @@ def register():
         password = request.form.get("password", "")
         confirm = request.form.get("confirm", "")
         error = None
-        phone, phone_err = read_phone(form["phone"], local.phone_country_code())
+        phone, phone_err = read_phone_field(form["phone"], local.phone_country_code())
         if not form["name"]:
             error = "Enter your name."
         elif not EMAIL_RE.match(form["email"]):
@@ -128,6 +138,7 @@ def register():
             flash("Welcome! Upload your first document whenever you're ready.", "success")
             return redirect(next_url or url_for("portal.dashboard"))
     return render_template("auth/register.html", form=form, via_link=local.came_through_link(),
+                           phone_field=phone_numbers.field(form["phone"], None, request.form.get("phone_country")),
                            single_price=pricing.single_price(local.visitor_currency()))
 
 
@@ -164,19 +175,20 @@ def account():
         if g.user["role"] == "admin" and not form["phone"]:
             phone, error = None, None  # reviewers don't get "feedback ready" texts
         else:
-            phone, error = read_phone(form["phone"], local.phone_country_code(g.user))
+            phone, error = read_phone_field(form["phone"], local.phone_country_code(g.user))
         if not form["name"]:
             error = "Enter your name."
         if error:
             flash(error, "error")
-            return render_template("auth/account.html", form=form), 400
+            return render_template("auth/account.html", form=form, phone_field=phone_numbers.field(
+                form["phone"], g.user, request.form.get("phone_country"))), 400
         execute("UPDATE users SET name = ?, phone = ? WHERE id = ?", (form["name"], phone, g.user["id"]))
         if g.user["role"] == "admin":
             flash("Saved.", "success")
         else:
             flash(f"Saved. We'll text {phone} when your feedback is ready.", "success")
         return redirect(url_for("auth.account"))
-    return render_template("auth/account.html", form=form)
+    return render_template("auth/account.html", form=form, phone_field=phone_numbers.field(form["phone"], g.user))
 
 
 @bp.route("/logout", methods=("POST",))

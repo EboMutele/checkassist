@@ -1,10 +1,23 @@
+{#- Country picker + number. The picker shows a compact "🇰🇪 +254" over a native select (full names, keyboard and
+    screen-reader friendly); phone.js keeps the two in step and pre-selects the visitor's country.
+    Without JavaScript, noscript.css shows the plain select instead. -#}
+{%- set pf = phone_field -%}
 <label for="phone">Mobile number</label>
-<input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="40"
-       {% if not (current_user and current_user.role == 'admin') %}required{% endif %}
-       value="{{ form.phone }}" placeholder="{{ '0712 345 678' if phone_cc == '254' else ('+' ~ phone_cc ~ ' …' if phone_cc else '+ country code and number') }}"
-       aria-describedby="phone-hint">
+<div class="phone-input" data-phone>
+  <div class="phone-cc">
+    <span class="phone-cc-shown" aria-hidden="true" data-phone-shown>{{ pf.chosen.flag }} +{{ pf.chosen.dial }}</span>
+    <select id="phone-country" name="phone_country" aria-label="Country code"{% if pf.guess %} data-guess{% endif %}>
+      {%- for c in pf.countries %}
+      <option value="{{ c.iso }}" data-dial="{{ c.dial }}" data-flag="{{ c.flag }}" data-example="{{ c.example }}"
+        {%- if c.main %} data-main{% endif %}{% if c.iso == pf.selected %} selected{% endif %}>{{ c.flag }} {{ c.name }} +{{ c.dial }}</option>
+      {%- endfor %}
+    </select>
+  </div>
+  <input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="40"
+         {% if not (current_user and current_user.role == 'admin') %}required{% endif %}
+         value="{{ pf.number }}" placeholder="{{ pf.chosen.example }}" aria-describedby="phone-hint">
+</div>
 <p id="phone-hint" class="hint">
   {%- if current_user and current_user.role == 'admin' %}Optional for reviewers.
-  {%- else %}We'll text you when your feedback is ready. Nothing else.{% endif %}
-  {%- if not phone_cc %} Start with + and your country code.{% endif -%}
+  {%- else %}We'll text you when your feedback is ready. Nothing else.{% endif -%}
 </p>
