@@ -202,7 +202,7 @@ def test_admin_can_put_a_direct_client_on_local_prices(kes_app, nia):
 
 def test_link_can_be_moved_or_switched_off(tmp_path):
     def app_with(path):
-        return create_app({"TESTING": True, "SECRET_KEY": "t", "DATABASE": str(tmp_path / f"{path or 'off'}.db"),
+        return create_app({"TESTING": True, "SECRET_KEY": "t", "DATABASE": str(tmp_path / f"{path.strip('/') or 'off'}.db"),
                            "UPLOAD_DIR": str(tmp_path / "u"), "LOCAL_LINK_PATH": path})
     moved = app_with("/karibu").test_client()
     assert moved.get("/karibu").status_code == 200 and moved.get("/local").status_code == 404

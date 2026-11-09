@@ -18,7 +18,9 @@ def _bool(name, default=False):
 def create_app(test_config=None):
     load_dotenv()
     app = Flask(__name__, instance_relative_config=True)
-    os.makedirs(app.instance_path, exist_ok=True)
+    # No os.makedirs(app.instance_path): in the Docker image the code belongs to root and the app runs as
+    # appuser, so creating /srv/instance fails and the app never starts. The database folder and the
+    # upload folder are created where they actually are (db.init_app, storage).
 
     app.config.from_mapping(
         APP_NAME=os.environ.get("APP_NAME", "NerdAccess"),
