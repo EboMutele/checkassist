@@ -10,7 +10,6 @@
 <section class="narrow auth sheet">
   <h1>Create your account</h1>
   <p class="lede">You'll use it to upload documents and collect your feedback.</p>
-  {% if via_link %}<p class="callout callout-local">Prices in Kenyan shillings, from {{ single_price }} a check. Pay with M-Pesa or card.</p>{% endif %}
   <form method="post" class="form">
     {{ csrf() }}
     <label for="name">Your name</label>
