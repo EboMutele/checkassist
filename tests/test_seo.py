@@ -251,3 +251,13 @@ def test_public_pages_never_promise_to_beat_turnitin_or_ai_detectors(live, clien
     ai = client.get("/ai-detection").get_data(as_text=True)
     assert "Can you make AI-written text pass a detector?" in ai and "<p>No. We review your own writing" in ai
     assert "isn't affiliated with Chegg" in client.get("/chegg-alternative").get_data(as_text=True)
+
+
+def test_settings_file_stays_out_of_the_docker_image():
+    """Without this, `COPY . .` put the server's .env (secret key, payment keys) into the image, and
+    once .env was locked to root the app's user couldn't read it and gunicorn failed to boot (502)."""
+    import pathlib
+    root = pathlib.Path(__file__).resolve().parent.parent
+    rules = [line.strip() for line in (root / ".dockerignore").read_text().splitlines()]
+    assert ".env" in rules and ".env.*" in rules and "!.env.example" in rules
+    assert ".git" in rules and "instance/" in rules

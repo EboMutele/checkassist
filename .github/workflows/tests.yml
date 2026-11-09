@@ -26,7 +26,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # A locked .env like the one on the server must stay out of the image (see .dockerignore)
+      - run: printf 'SECRET_KEY=from-dotenv-must-not-be-in-image\n' > .env && chmod 600 .env
       - run: docker build -t checkassist .
+      - run: docker run --rm --entrypoint sh checkassist -c 'test ! -e /srv/.env && test ! -e /srv/.git'
       - name: Start it and load pages
         run: |
           docker run -d --name app -p 8000:8000 \
