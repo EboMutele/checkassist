@@ -368,3 +368,35 @@ def test_paystack_create_plan_command(pay_app, fake):
     assert "PAYSTACK_MONTHLY_PLAN_CODE=PLN_monthly" in result.output
     assert fake.calls[-1]["payload"] == {"name": "NerdAccess Monthly (80 checks, USD)", "interval": "monthly",
                                          "amount": 24000, "currency": "USD"}
+
+
+def test_paystack_requests_name_the_app_not_python_urllib(pay_app, monkeypatch):
+    """Cloudflare in front of api.paystack.co answers "Python-urllib" with 403 error code 1010."""
+    seen = {}
+
+    def send(method, url, headers, body):
+        seen.update(headers)
+        return 200, {"status": True, "data": {}}
+
+    monkeypatch.setattr(billing, "_send", send)
+    with pay_app.test_request_context():
+        billing.paystack("GET", "/transaction/verify/x")
+    assert seen["User-Agent"] == "NerdAccess/1.0 (+https://checkassist.test)"
+
+
+def test_a_firewall_page_instead_of_paystack_is_logged_and_explained(pay_app, monkeypatch, caplog):
+    monkeypatch.setattr(billing, "_send", lambda *a: (403, {"_raw": "error code: 1010"}))
+    with pay_app.test_request_context(), pytest.raises(billing.PaymentError) as e:
+        billing.paystack("POST", "/transaction/initialize", {})
+    assert "HTTP 403" in str(e.value)
+    assert "error code: 1010" in caplog.text
+
+
+def test_send_survives_a_non_json_answer(monkeypatch):
+    class Resp:
+        status = 403
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self): return b"error code: 1010"
+    monkeypatch.setattr(billing.urllib.request, "urlopen", lambda req, timeout: Resp())
+    assert billing._send("GET", "https://api.paystack.co/x", {}, None) == (403, {"_raw": "error code: 1010"})

@@ -177,19 +177,27 @@ def _send(method, url, headers, body):
     req = urllib.request.Request(url, data=body, method=method, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=20) as resp:
-            return resp.status, json.loads(resp.read().decode("utf-8") or "{}")
+            status, text = resp.status, resp.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
-        try:
-            return e.code, json.loads(e.read().decode("utf-8") or "{}")
-        except ValueError:
-            return e.code, {}
+        status, text = e.code, e.read().decode("utf-8", "replace")
+    try:
+        return status, json.loads(text or "{}")
+    except ValueError:  # not Paystack answering: e.g. a firewall page ("error code: 1010")
+        return status, {"_raw": text[:200]}
+
+
+def user_agent():
+    """Paystack's API sits behind Cloudflare, which turns away Python's default "Python-urllib" agent
+    with 403 "error code: 1010". Name the app instead (also used for text messages)."""
+    return f"{current_app.config['APP_NAME']}/1.0 (+{current_app.config['BASE_URL'].rstrip('/')})"
 
 
 def paystack(method, path, payload=None):
     key = current_app.config["PAYSTACK_SECRET_KEY"]
     if not key:
         raise PaymentError("Payments aren't set up yet. Please try again later.")
-    headers = {"Authorization": f"Bearer {key}", "Accept": "application/json", "Content-Type": "application/json"}
+    headers = {"Authorization": f"Bearer {key}", "Accept": "application/json", "Content-Type": "application/json",
+               "User-Agent": user_agent()}
     body = json.dumps(payload).encode() if payload is not None else None
     try:
         status, data = _send(method, API + path, headers, body)
@@ -197,8 +205,10 @@ def paystack(method, path, payload=None):
         log.warning("Paystack unreachable: %s", e)
         raise PaymentError("We couldn't reach the payment provider. Please try again in a moment.") from e
     if not (200 <= status < 300) or not data.get("status"):
-        log.warning("Paystack %s %s -> %s %s", method, path, status, data.get("message"))
-        raise PaymentError(data.get("message") or "The payment provider declined the request.")
+        log.warning("Paystack %s %s -> HTTP %s: %s", method, path, status, data.get("message") or data.get("_raw") or "(empty)")
+        if data.get("message"):
+            raise PaymentError(data["message"])
+        raise PaymentError(f"The payment provider turned the request away (HTTP {status}). Please try again in a few minutes.")
     return data.get("data") or {}
 
 
