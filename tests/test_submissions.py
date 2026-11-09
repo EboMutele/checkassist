@@ -37,6 +37,7 @@ def test_title_is_optional_and_falls_back_to_the_file_name(app, alice):
     page = alice.get("/submit").get_data(as_text=True)
     assert 'id="title" name="title" maxlength="200"' in page and "(optional)" in page
     assert "confirm_rights" not in page and "permission to share" not in page
+    assert "By uploading, you confirm you can share this document." in page  # a note, not a checkbox
     r = upload(alice, title="", filename="History_essay-final  v2.pdf")
     assert r.status_code == 302
     with app.app_context():
