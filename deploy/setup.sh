@@ -78,21 +78,34 @@ cat > /etc/motd <<'EOF'
 
 EOF
 
-# 9. Wait until nerdaccess.store points at this server, then start Caddy so it gets the HTTPS
-#    certificate on the first try (asking too early gets you rate-limited for an hour)
+# 9. Wait until the internet sees nerdaccess.store pointing at this server, then start Caddy so it
+#    gets the HTTPS certificate on the first try (asking too early gets you rate-limited for an hour).
+#    Public resolvers are what Let's Encrypt sees: they catch nameservers still at the registrar and
+#    old answers still cached, which asking DigitalOcean's own DNS would miss.
 META=http://169.254.169.254/metadata/v1
-MINE="$(echo $(curl -fs $META/interfaces/public/0/ipv4/address || true) $(curl -fs $META/reserved_ip/ipv4/ip_address || true))"
-resolve() {
-  if command -v dig >/dev/null; then dig +short A "$1" @ns1.digitalocean.com; else getent ahostsv4 "$1" | awk '{print $1}'; fi
+MINE="$(echo $(curl -fs $META/interfaces/public/0/ipv4/address || true) $(curl -fs $META/reserved_ip/ipv4/ip_address || true) $(curl -fs $META/floating_ip/ipv4/ip_address || true))"
+seen() {  # the IPv4 addresses public DNS gives for $1
+  if command -v dig >/dev/null; then
+    { dig +short A "$1" @1.1.1.1; dig +short A "$1" @8.8.8.8; } 2>/dev/null | grep -E '^[0-9]+(\.[0-9]+){3}$' | sort -u
+  else
+    getent ahostsv4 "$1" 2>/dev/null | awk '{print $1}' | sort -u
+  fi
+}
+shown() { out="$(echo $("$@" 2>/dev/null || true))"; echo "${out:-nothing yet}"; }
+points_here() {  # every address the internet sees for $1 is this server's
+  ips="$(seen "$1" || true)"
+  [ -n "$ips" ] || return 1
+  for ip in $ips; do case " $MINE " in *" $ip "*) ;; *) return 1 ;; esac; done
 }
 for i in $(seq 1 240); do
-  ok=1
-  for host in "$DOMAIN" "www.$DOMAIN"; do
-    ip="$(resolve "$host" 2>/dev/null | head -n1 || true)"
-    case " $MINE " in *" $ip "*) [ -n "$ip" ] || ok=0 ;; *) ok=0 ;; esac
-  done
-  [ "$ok" = 1 ] && { echo "DNS points here ($MINE)"; break; }
-  [ $((i % 10)) = 1 ] && echo "Waiting for $DOMAIN and www.$DOMAIN to point at $MINE ..."
+  if points_here "$DOMAIN" && points_here "www.$DOMAIN"; then echo "DNS points here ($MINE)"; break; fi
+  if [ $((i % 10)) = 1 ]; then
+    echo "Waiting for DNS. This server is $MINE; the internet sees $DOMAIN at: $(shown seen "$DOMAIN")" \
+         "and www at: $(shown seen "www.$DOMAIN")."
+    if command -v dig >/dev/null; then
+      echo "  Nameservers in use: $(shown dig +short NS "$DOMAIN" @1.1.1.1) (records only count where these point)"
+    fi
+  fi
   sleep 30
 done
 docker compose up -d
