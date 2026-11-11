@@ -56,6 +56,12 @@ PAGES = (
          "score and a similarity report, explained{soon}.",
          "2026-11-11", "services/ai_detection_report.html", "AI detection reports",
          "An AI score and a similarity report, explained.", "AI content detection"),
+    Page("seo.flagged_work_review", "/flagged-work-review",
+         "Flagged by an AI detector? Get it reviewed",
+         "Every passage an AI detector or plagiarism checker flagged, analysed by a reviewer, with "
+         "professional feedback on what to fix{soon}.",
+         "2026-11-11", "services/flagged_work_review.html", "Flagged work review",
+         "Every flagged passage analysed, with feedback on what to fix.", "Academic writing feedback"),
     Page("seo.essay_review", "/essay-review",
          "Essay review by a real person",
          "Get your essay read by a real reviewer before you submit: notes on your argument, evidence and "
