@@ -48,7 +48,7 @@
 {% else %}
   <section class="empty sheet">
     <h2>Upload your first document</h2>
-    <p>Send an essay, report or application and a reviewer will read it and send back notes{% if review_minutes %}, usually within {{ review_minutes|minutes }}{% endif %}. We'll tell you the moment it's done.</p>
+    <p>Send an essay, report or application and get your plagiarism and AI report{% if review_minutes %} in about {{ review_minutes|minutes }}{% endif %}. We'll tell you the moment it's done.</p>
     <a class="btn btn-primary" href="{{ url_for('portal.new_submission') }}">Upload a document</a>
   </section>
 {% endif %}

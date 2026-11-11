@@ -1,0 +1,49 @@
+{% extends "service.html" %}
+{% block h1 %}AI detection and plagiarism reports{% endblock %}
+{% block lede %}See what an AI detector and a plagiarism checker make of your document before your marker does. Get an AI score, a similarity report and a plain explanation of both{% if review_minutes %} in about {{ review_minutes|minutes }}{% endif %}.{% endblock %}
+{% block cta %}Get my report{% endblock %}
+
+{% block notes %}
+<p class="hand-note">These two paragraphs are what pushed your AI score up.<small>On page 2</small></p>
+<p class="hand-note">This definition matches a textbook word for word. Quote it and cite it.<small>On page 3</small></p>
+<p class="hand-note">Most of your similarity is your reference list. That's fine.<small>On the report</small></p>
+{% endblock %}
+
+{% block checks_title %}What your report shows{% endblock %}
+{% block checks %}
+<div><dt>AI score</dt><dd>How much of your document a detector estimates was written by AI, with the passages it flagged highlighted.</dd></div>
+<div><dt>Similarity score</dt><dd>How much of your text matches web pages, published work and other papers, with each matching source listed.</dd></div>
+<div><dt>Matches that need fixing</dt><dd>Quotes without quotation marks, paraphrases that stay too close to the source, and ideas with no citation, pointed out so you can fix them.</dd></div>
+<div><dt>What the numbers mean</dt><dd>A short note on which parts of the report matter and which don't, like matches in your reference list or a properly quoted passage.</dd></div>
+{% endblock %}
+
+{% block body %}
+<section class="service-section service-prose" aria-labelledby="read-title">
+  <h2 id="read-title">How to read the numbers</h2>
+  <p>An AI score is a probability, not proof. Detectors do flag human writing, and your marker should look at more than a number. A similarity score isn't a plagiarism verdict either: a properly quoted and cited passage still counts as a match.</p>
+  <p>What matters is what's behind the score. If a passage is flagged, check that every borrowed idea is cited and every quote is marked. If your own writing is flagged, your drafts and notes are your best evidence. More in <a href="{{ url_for('seo.ai_detection') }}">what to do if you're flagged</a> and <a href="{{ url_for('seo.turnitin_similarity_score') }}">similarity scores, explained</a>.</p>
+</section>
+{% endblock %}
+
+{% block faq %}
+<details>
+  <summary>Is my document stored?</summary>
+  <p>It's kept privately in your account so you can open your report, and only you and our team can see it. It's never added to a plagiarism database, never shared and never used to train AI.</p>
+</details>
+<details>
+  <summary>My own writing was flagged. What now?</summary>
+  <p>Keep your drafts, notes and version history: they show how the work was written. Ask your tutor how the score is being used, and read <a href="{{ url_for('seo.ai_detection') }}">our guide to being flagged</a>.</p>
+</details>
+<details>
+  <summary>Will you rewrite my work so it scores lower?</summary>
+  <p>No. We show you what a detector sees and which matches need citing; the writing stays yours.</p>
+</details>
+<details>
+  <summary>What can I send?</summary>
+  <p>Essays, reports, dissertation chapters and applications, as {{ allowed_label }} files up to {{ max_upload_mb }} MB.</p>
+</details>
+<details>
+  <summary>How much does a report cost?</summary>
+  <p>One check covers a document up to {{ '{:,}'.format(words_per_check) }} words: {{ single_price }} on its own, or from {{ lowest_per_check }} a check {{ 'with a pack or the monthly plan' if has_monthly else 'with a pack' }}. <a href="{{ url_for('portal.pricing_page') }}">See pricing</a>.</p>
+</details>
+{% endblock %}

@@ -20,7 +20,7 @@
 {% block body %}
 <section class="service-section service-prose" aria-labelledby="plag-title">
   <h2 id="plag-title">Is this a plagiarism check?</h2>
-  <p>No. We don't compare your paper against a database, and we don't produce a similarity or AI-detection score. A check here is a person reading your work.</p>
+  <p>Not on its own. If you want a similarity score and an AI score as well, see <a href="{{ url_for('seo.ai_detection_report') }}">plagiarism and AI reports</a>. A citation check is about what's behind those numbers.</p>
   <p>What we do catch is the citation gaps that most often lead to accidental plagiarism: ideas taken from a source without credit, quotes without page numbers, and paraphrases that stay too close to the original. Fix those, and every borrowed idea in your paper is credited.</p>
 </section>
 {% endblock %}
@@ -36,7 +36,7 @@
 </details>
 <details>
   <summary>Will this make sure my paper passes Turnitin?</summary>
-  <p>No one can promise a similarity score, and we don't run Turnitin. A score isn't the same as plagiarism anyway: markers read the report to see whether matched text is properly quoted and credited. That's exactly what we check. More in <a href="{{ url_for('seo.turnitin_similarity_score') }}">Turnitin similarity scores, explained</a>.</p>
+  <p>No one can promise a similarity score. A score isn't the same as plagiarism anyway: markers read the report to see whether matched text is properly quoted and credited. That's exactly what we check. More in <a href="{{ url_for('seo.turnitin_similarity_score') }}">Turnitin similarity scores, explained</a>.</p>
 </details>
 <details>
   <summary>Do you only check citations, or the writing too?</summary>

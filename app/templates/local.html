@@ -8,7 +8,7 @@
   <div class="hero-main">
     <p class="local-tag">For students in Kenya · Pay with M-Pesa</p>
     <h1 id="hero-title">Check <span class="edit"><del aria-hidden="true">you're</del><ins>your</ins></span> paper before you hand it in.</h1>
-    <p class="lede">A real reviewer reads every page, flags missing citations and weak arguments, and sends back clear notes and a marked-up copy{% if review_minutes %} in about {{ review_minutes|minutes }}{% endif %}. Prices are in shillings, from {{ single_price }} a check.</p>
+    <p class="lede">Get your plagiarism and AI report in minutes. Your document is handled securely, and it's never added to a plagiarism database or used to train AI. We'll also flag missing citations and weak arguments. Prices are in shillings, from {{ single_price }} a check.</p>
 
     {% if can_switch %}
       <form method="post" action="{{ url_for('local.use_shillings') }}" class="local-cta">

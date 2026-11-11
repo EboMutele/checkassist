@@ -38,14 +38,14 @@
 
 <section aria-labelledby="us-title">
   <h2 id="us-title">Where we fit</h2>
-  <p>We don't run AI detectors, produce AI scores, or rewrite work to change how it scores. A reviewer reads your own writing and shows you where it's unclear, generic or unsupported, and you make the changes. Clear reasoning, specific examples and properly cited sources make any piece of writing stronger. <a href="{{ url_for('seo.how_we_review') }}">How we review</a></p>
+  <p>We can run an <a href="{{ url_for('seo.ai_detection_report') }}">AI detection report</a> on your document, so you see what a detector sees before you submit. We don't rewrite work to change how it scores. A reviewer reads your own writing and shows you where it's unclear, generic or unsupported, and you make the changes. Clear reasoning, specific examples and properly cited sources make any piece of writing stronger. <a href="{{ url_for('seo.how_we_review') }}">How we review</a></p>
 </section>
 {% endblock %}
 
 {% block faq %}
 <details>
   <summary>Can you check my essay for AI?</summary>
-  <p>No. We don't run AI detectors or give AI scores. A reviewer reads your writing for argument, evidence and clarity.</p>
+  <p>Yes. An <a href="{{ url_for('seo.ai_detection_report') }}">AI detection report</a> gives you a score and the passages it flagged. Remember that a score is a probability, not proof.</p>
 </details>
 <details>
   <summary>Can you make AI-written text pass a detector?</summary>
