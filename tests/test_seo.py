@@ -260,3 +260,9 @@ def test_env_example_has_no_notes_where_values_go():
     text = (pathlib.Path(__file__).resolve().parent.parent / ".env.example").read_text()
     bad = [line for line in text.splitlines() if re.match(r"^[A-Z_]+=\s*#", line)]
     assert not bad, bad
+
+
+def test_flagged_work_review_offers_feedback_not_a_rewrite(live, client):
+    page = client.get("/flagged-work-review").get_data(as_text=True)
+    assert "Will you rewrite the flagged parts for me?" in page and "<p>No. We show you what was flagged" in page
+    assert "/flagged-work-review" in client.get("/").get_data(as_text=True)  # listed under What we check

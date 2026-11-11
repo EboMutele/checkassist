@@ -385,9 +385,12 @@ input[type="file"] { font: inherit; font-size: .9375rem; max-width: 100%; }
 @media (min-width: 720px) {
   .check-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .service-links { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .service-links > li:last-child:nth-child(odd) { grid-column: 1 / -1; }
 }
 @media (min-width: 960px) {
   .service-links { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .service-links > li:last-child:nth-child(odd) { grid-column: auto; }
+  .service-links > li:last-child:nth-child(3n+1) { grid-column: 1 / -1; }
   /* Top-aligned on purpose: centring made the text jump when the handwriting font arrived. */
   .service-hero .hero-margin { padding-top: 84px; padding-bottom: 44px; gap: 36px; }
 }

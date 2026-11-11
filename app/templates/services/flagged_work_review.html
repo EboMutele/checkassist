@@ -1,0 +1,50 @@
+{% extends "service.html" %}
+{% block h1 %}Flagged work review{% endblock %}
+{% block lede %}Flagged by an AI detector or a plagiarism checker? Send us the document and the report. A reviewer goes through every flagged passage and sends back professional feedback and an analysis of what was flagged and why{% if review_minutes %}, in about {{ review_minutes|minutes }}{% endif %}.{% endblock %}
+{% block cta %}Get my flags reviewed{% endblock %}
+
+{% block notes %}
+<p class="hand-note">This match is your reference list. It isn't a problem.<small>On the similarity report</small></p>
+<p class="hand-note">This paragraph follows the source too closely. Quote it or cite it.<small>On page 3</small></p>
+<p class="hand-note">Flagged as AI, and it's generic. Add your own example from the case study.<small>On page 5</small></p>
+{% endblock %}
+
+{% block checks_title %}What you get back{% endblock %}
+{% block checks %}
+<div><dt>Passage-by-passage analysis</dt><dd>Each flagged passage, and what most likely triggered it: a matched source, a close paraphrase, a missing citation, or generic, formulaic phrasing.</dd></div>
+<div><dt>What matters and what doesn't</dt><dd>Matches in your reference list, properly quoted text and common phrases count towards a score without being a problem. We tell you which flags deserve your attention.</dd></div>
+<div><dt>Citation fixes</dt><dd>Where a flag points to a real gap, like a quote without quotation marks or an idea with no source, we show you exactly how to fix it.</dd></div>
+<div><dt>Feedback on your writing</dt><dd>Where your writing reads as vague or unsupported, notes on making it specific: your own examples, your own reasoning, and evidence that's cited.</dd></div>
+<div><dt>Next steps</dt><dd>If your own work was flagged, what helps you show it's yours, like drafts, version history and notes, and how to talk to your tutor about it.</dd></div>
+{% endblock %}
+
+{% block body %}
+<section class="service-section service-prose" aria-labelledby="line-title">
+  <h2 id="line-title">Feedback, not a rewrite</h2>
+  <p>We won't rewrite your work or change it so that it scores differently. You make the changes, using our notes. That's what most universities allow, and it's what holds up if you're asked to talk about your work.</p>
+  <p>A detector's score is a probability, not proof, and a similarity score isn't a plagiarism verdict. Our job is to tell you what's really behind yours. More in <a href="{{ url_for('seo.ai_detection') }}">what to do if you're flagged</a>.</p>
+</section>
+{% endblock %}
+
+{% block faq %}
+<details>
+  <summary>How do I send the report?</summary>
+  <p>Upload your document, then add the report as a screenshot or PDF in the conversation on your document's page. No report yet? Ask for an <a href="{{ url_for('seo.ai_detection_report') }}">AI detection and plagiarism report</a> and we'll start from that.</p>
+</details>
+<details>
+  <summary>My own work was flagged. Can you prove it's mine?</summary>
+  <p>No one can prove that from the text alone, and a detector's score isn't proof either. What we can do is explain each flag and point you to the evidence that helps: your drafts, version history, notes and sources.</p>
+</details>
+<details>
+  <summary>Will you rewrite the flagged parts for me?</summary>
+  <p>No. We show you what was flagged, why, and what to fix. The changes are yours to make.</p>
+</details>
+<details>
+  <summary>Is my document kept private?</summary>
+  <p>It's kept privately in your account, and only you and our team can open it. It's never added to a plagiarism database, never shared and never used to train AI.</p>
+</details>
+<details>
+  <summary>How much does it cost?</summary>
+  <p>One check covers a document up to {{ '{:,}'.format(words_per_check) }} words: {{ single_price }} on its own, or from {{ lowest_per_check }} a check {{ 'with a pack or the monthly plan' if has_monthly else 'with a pack' }}. <a href="{{ url_for('portal.pricing_page') }}">See pricing</a>.</p>
+</details>
+{% endblock %}
