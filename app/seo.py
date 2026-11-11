@@ -43,13 +43,19 @@ class Page:
 PAGES = (
     Page("portal.index", "/",
          "Check your paper before you hand it in",
-         "Upload your essay, report or application. A real reviewer reads every page and sends notes and a "
-         "marked-up copy{soon}. {price} a check.",
-         "2026-11-07"),
+         "Upload your essay, report or application for a plagiarism and AI report{soon}, with missing "
+         "citations and weak arguments flagged. {price} a check.",
+         "2026-11-11"),
     Page("portal.pricing_page", "/pricing",
          "Pricing: {price} a check, from {lowest} on a plan",
          "One check covers a document up to {words} words, read in full by a person: {plan_list}.",
          "2026-11-07", label="Pricing"),
+    Page("seo.ai_detection_report", "/ai-detection-report",
+         "AI detection and plagiarism reports",
+         "See what an AI detector and a plagiarism checker make of your document before you submit: an AI "
+         "score and a similarity report, explained{soon}.",
+         "2026-11-11", "services/ai_detection_report.html", "AI detection reports",
+         "An AI score and a similarity report, explained.", "AI content detection"),
     Page("seo.essay_review", "/essay-review",
          "Essay review by a real person",
          "Get your essay read by a real reviewer before you submit: notes on your argument, evidence and "
@@ -66,7 +72,7 @@ PAGES = (
          "Citation check for APA, MLA and Harvard",
          "A reviewer checks that every claim that needs a source has one, and that your in-text citations "
          "match your reference list in APA, MLA, Harvard or Chicago.",
-         "2026-11-07", "services/citation_check.html", "Citation check",
+         "2026-11-11", "services/citation_check.html", "Citation check",
          "Claims that need a source, and references that don't match.", "Citation checking"),
     Page("seo.dissertation_review", "/dissertation-review",
          "Dissertation and thesis chapter review",
@@ -84,20 +90,21 @@ PAGES = (
          "How we review, and what we won't do",
          "What a reviewer checks in every document, what we never do (like rewriting your work for you), and "
          "how we keep your files private.",
-         "2026-11-07", "how_we_review.html", "How we review"),
+         "2026-11-11", "how_we_review.html", "How we review"),
     # Guides: honest answers to what students search for around Turnitin, AI detectors and Chegg.
-    # They say plainly what this site is (a human review) and isn't (Turnitin, an AI detector, a way
-    # around one). Keep it that way: pages that promise something else get found and then distrusted.
+    # They say plainly what this site does (reports, and a person's notes on what's behind them) and
+    # won't do (rewrite work to get past a detector). Keep it that way: pages that promise more get found
+    # and then distrusted.
     Page("seo.turnitin_similarity_score", "/turnitin-similarity-score",
          "Turnitin similarity score: what it means",
          "What a Turnitin similarity score does and doesn't tell your marker, why matches happen, and how to "
          "fix the citation problems behind them before you submit.",
-         "2026-11-08", "guides/turnitin_similarity_score.html", "Turnitin scores explained", guide=True),
+         "2026-11-11", "guides/turnitin_similarity_score.html", "Turnitin scores explained", guide=True),
     Page("seo.ai_detection", "/ai-detection",
          "Flagged by an AI detector? What to do next",
          "AI detectors give probabilities, not proof, and they do flag human writing. How to show your work "
          "is yours, what to do if flagged, and why humanizers backfire.",
-         "2026-11-08", "guides/ai_detection.html", "AI detectors and your work", guide=True),
+         "2026-11-11", "guides/ai_detection.html", "AI detectors and your work", guide=True),
     Page("seo.chegg_alternative", "/chegg-alternative",
          "A Chegg alternative for essay feedback",
          "Chegg is built for homework help and automated writing checks. If you want a real person to read "
