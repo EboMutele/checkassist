@@ -27,15 +27,23 @@
       <span class="pill pill-neutral">Off</span>
     {% endif %}
   </summary>
-  <p class="hint">An email and a text go out the moment a customer places an order or a payment comes in.</p>
-  <form method="post" class="form alerts-form">
+  <p class="hint">Emails and texts that go out the moment someone signs up, places an order or pays. Each has its own list: up to 5 per box, one per line. A phone number starting 07 or 01 is read as Kenyan.</p>
+  <form method="post" class="alerts-form">
     {{ csrf() }}
-    <label for="alert-emails">Email alerts to</label>
-    <textarea id="alert-emails" name="emails" rows="3" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="you@example.com">{{ alert_form.emails }}</textarea>
-    <p class="hint">Up to 5, one per line.{% if reviewer_emails %} Reviewers' own accounts already get an email for each new document, so they won't get it twice.{% endif %}</p>
-    <label for="alert-phones">Text alerts to</label>
-    <textarea id="alert-phones" name="phones" rows="3" autocomplete="off" spellcheck="false" placeholder="+254 712 345 678">{{ alert_form.phones }}</textarea>
-    <p class="hint">Up to 5, one per line, with the country code (a number starting 07 or 01 is read as Kenyan).</p>
+    {% for event, label in alert_events %}
+    <fieldset class="alert-event">
+      <legend>{{ label }}</legend>
+      <div class="alert-box">
+        <label for="emails-{{ event }}">Emails</label>
+        <textarea id="emails-{{ event }}" name="emails_{{ event }}" rows="2" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="you@example.com">{{ alert_form['emails_' ~ event] }}</textarea>
+      </div>
+      <div class="alert-box">
+        <label for="phones-{{ event }}">Texts</label>
+        <textarea id="phones-{{ event }}" name="phones_{{ event }}" rows="2" autocomplete="off" spellcheck="false" placeholder="+254 712 345 678">{{ alert_form['phones_' ~ event] }}</textarea>
+      </div>
+      {% if event == 'order' and reviewer_emails %}<p class="hint alert-note">Reviewers' own accounts already get an email for each new order, so they won't get it twice.</p>{% endif %}
+    </fieldset>
+    {% endfor %}
     {% if not sms_ready %}<p class="callout callout-warn small">Texts are switched off on the server, so numbers here won't get texts until <code>SMS_PROVIDER</code> is set.</p>{% endif %}
     <div class="button-row">
       <button type="submit" name="action" value="save" class="btn btn-primary">Save</button>

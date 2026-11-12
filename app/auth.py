@@ -133,6 +133,8 @@ def register():
                 conn = get_db()
                 grant(conn, uid, free, "signup", "Welcome checks", _iso(add_months(_now(), ADMIN_GRANT_VALID_MONTHS)))
                 conn.commit()
+            from . import alerts
+            alerts.signup(uid)
             next_url = _safe_next(request.args.get("next"))
             _start_session(uid)
             flash("Welcome! Upload your first document whenever you're ready.", "success")

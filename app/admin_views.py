@@ -469,20 +469,27 @@ CURRENCY_CHOICES = (("USD", "US dollars"), ("KES", "Kenyan shillings (M-Pesa)"))
 @admin_required
 def messages():
     """Every email and text the site tried to send, newest first, and whether it went out. Also where
-    admins say who gets instant alerts for new orders and payments."""
+    admins say who gets instant alerts for new orders, payments and sign-ups."""
     typed, status = None, 200
     if request.method == "POST":
-        typed = {"emails": request.form.get("emails", "")[:2000], "phones": request.form.get("phones", "")[:1000]}
-        emails, error = alerts.parse_emails(typed["emails"])
-        phones, phone_error = alerts.parse_phones(typed["phones"])
-        if error or phone_error:
-            flash(error or phone_error, "error")
+        typed, lists, error = {}, {}, None
+        for event, label in alerts.EVENTS:
+            typed[f"emails_{event}"] = request.form.get(f"emails_{event}", "")[:2000]
+            typed[f"phones_{event}"] = request.form.get(f"phones_{event}", "")[:1000]
+            emails, e_err = alerts.parse_emails(typed[f"emails_{event}"])
+            phones, p_err = alerts.parse_phones(typed[f"phones_{event}"])
+            if (e_err or p_err) and not error:
+                error = f"{label}: {e_err or p_err}"
+            lists[event] = (emails, phones)
+        if error:
+            flash(error, "error")
             status = 400
         else:
-            alerts.save_recipients(emails, phones)
+            alerts.save_recipients(lists)
+            anyone = alerts.everyone(lists)
             if request.form.get("action") != "test":
-                flash("Alerts saved." if emails or phones else "Alerts are off: nobody is on the list.", "success")
-            elif not emails and not phones:
+                flash("Alerts saved." if anyone else "Alerts are off: nobody is on any list.", "success")
+            elif not anyone:
                 flash("Add an email address or a phone number, then send the test.", "error")
             else:
                 results = alerts.send_test(g.user["name"])
@@ -494,7 +501,8 @@ def messages():
                 else:
                     flash("Test sent to " + ", ".join(sent) + ". Check the inbox and phone.", "success")
             return redirect(url_for("admin.messages"))  # top of the page, where the result is flashed
-    alert_emails, alert_phones = alerts.recipients()
+    alert_lists = alerts.routing()
+    alert_people = alerts.everyone(alert_lists)
     show = request.args.get("show", "all")
     q = request.args.get("q", "").strip()[:100]
     where, args = [], []
@@ -512,8 +520,10 @@ def messages():
                            sent=counts["sent"] or 0, problems=counts["problems"] or 0,
                            email_ready=bool(cfg.get("RESEND_API_KEY") or cfg.get("SMTP_HOST")),
                            sms_ready=bool(cfg.get("SMS_PROVIDER")),
-                           alert_emails=alert_emails, alert_phones=alert_phones,
-                           alert_form=typed or {"emails": "\n".join(alert_emails), "phones": "\n".join(alert_phones)},
+                           alert_events=alerts.EVENTS,
+                           alert_emails=[r for r in alert_people if "@" in r], alert_phones=[r for r in alert_people if "@" not in r],
+                           alert_form=typed or {f"{kind}_{event}": "\n".join(alert_lists[event][i])
+                                                for event, _ in alerts.EVENTS for i, kind in enumerate(("emails", "phones"))},
                            alert_error=status != 200, reviewer_emails=bool(cfg.get("ADMIN_EMAIL_ALERTS"))), status
 
 
