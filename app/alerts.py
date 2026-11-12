@@ -1,5 +1,5 @@
-"""Instant alerts for the people who run the business: an email and a text the moment a customer places
-an order or a payment comes in.
+"""Instant alerts for the people who run the business: an email and a text the moment someone signs up,
+places an order or pays. Each of those has its own list of email addresses and phone numbers.
 
 Who gets them is set on Admin > Messages and kept in the database, not in code or .env: the repository
 is public (addresses in it get harvested), and the list changes when staff do.
@@ -25,7 +25,8 @@ from .sms import send_sms
 
 log = logging.getLogger(__name__)
 
-EMAILS_KEY, PHONES_KEY = "alert_emails", "alert_phones"
+EVENTS = (("order", "New orders"), ("payment", "Payments"), ("signup", "Sign-ups"))
+LEGACY_KEYS = {"emails": "alert_emails", "phones": "alert_phones"}  # one list for orders and payments, before the split
 MAX_RECIPIENTS = 5
 SMS_LIMIT = 160  # one GSM-7 text; see gsm7()
 _EMAIL = re.compile(r"^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]+$")
@@ -48,16 +49,45 @@ def set_setting(key, value):
         (key, value, utcnow()))
 
 
-def recipients():
-    """(emails, phone numbers) that get alerts."""
-    return ([e for e in get_setting(EMAILS_KEY).split("\n") if e],
-            [p for p in get_setting(PHONES_KEY).split("\n") if p])
+def recipients(event):
+    """(emails, phone numbers) alerted about one event: "order", "payment" or "signup"."""
+    lists = []
+    for kind in ("emails", "phones"):
+        value = get_setting(f"alert_{kind}_{event}", None)
+        if value is None and event in ("order", "payment"):  # saved before alerts were split by event
+            value = get_setting(LEGACY_KEYS[kind])
+        lists.append([v for v in (value or "").split("\n") if v])
+    return tuple(lists)
 
 
-def save_recipients(emails, phones):
-    set_setting(EMAILS_KEY, "\n".join(emails))
-    set_setting(PHONES_KEY, "\n".join(phones))
+def routing():
+    """{event: (emails, phones)} for every event."""
+    return {event: recipients(event) for event, _ in EVENTS}
+
+
+def save_recipients(lists):
+    """lists: {event: (emails, phones)} for every event."""
+    for event, (emails, phones) in lists.items():
+        set_setting(f"alert_emails_{event}", "\n".join(emails))
+        set_setting(f"alert_phones_{event}", "\n".join(phones))
+    get_db().execute("DELETE FROM settings WHERE key IN (?, ?)", tuple(LEGACY_KEYS.values()))
     get_db().commit()
+
+
+def everyone(lists=None):
+    """{recipient: [event labels]} across all events, phones first, each once."""
+    lists = lists or routing()
+    labels, phones, emails = dict(EVENTS), {}, {}
+    for event, (event_emails, event_phones) in lists.items():
+        for p in event_phones:
+            phones.setdefault(p, []).append(labels[event].lower())
+        for e in event_emails:
+            emails.setdefault(e, []).append(labels[event].lower())
+    return {**phones, **emails}
+
+
+def human_list(items):
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
 
 
 def parse_emails(raw):
@@ -169,7 +199,7 @@ def _contact(name, email):
 def new_order(sub_id, customer, title, words, checks, instructions=""):
     """A customer just placed an order. Never raises: an alert must not break the upload."""
     try:
-        emails, phones = recipients()
+        emails, phones = recipients("order")
         cfg = current_app.config
         if cfg.get("ADMIN_EMAIL_ALERTS"):  # reviewers' own accounts already got the new-document email
             reviewers = {r["email"].lower() for r in query("SELECT email FROM users WHERE role = 'admin' AND is_active = 1")}
@@ -209,7 +239,7 @@ def new_order(sub_id, customer, title, words, checks, instructions=""):
 def payment(payment_id):
     """A payment was just recorded as paid. Never raises: the payment is already saved."""
     try:
-        emails, phones = recipients()
+        emails, phones = recipients("payment")
         if not emails and not phones:
             return None
         from .billing import balance, plan_by_id
@@ -260,26 +290,68 @@ def payment(payment_id):
         return None
 
 
+def signup(user_id):
+    """Someone just created an account. Never raises: an alert must not break signing up."""
+    try:
+        emails, phones = recipients("signup")
+        if not emails and not phones:
+            return None
+        from . import local
+        u = query("SELECT * FROM users WHERE id = ?", (user_id,), one=True)
+        if u is None:
+            return None
+        cfg = current_app.config
+        app_name, name = cfg["APP_NAME"], u["name"]
+        customers = query("SELECT COUNT(*) AS n FROM users WHERE role = 'user'", one=True)["n"]
+        free = cfg.get("SIGNUP_FREE_CHECKS") or 0
+        link = _link("admin.user_detail", user_id=user_id)
+        subject = f"New sign-up: {name}"
+        content = {
+            "kicker": "New sign-up",
+            "heading": f"{name} just signed up",
+            "intro": [f"That makes {customers:,} {'customer' if customers == 1 else 'customers'}."],
+            "document_label": "Customer",
+            "document": name,
+            "details": [(label, value) for label, value in (
+                ("Email", u["email"]),
+                ("Phone", u["phone"] or ""),
+                ("Pays in", "Kenyan shillings" if u["currency"] == "KES" else "US dollars"),
+                ("Came from", "your /local link" if u["signup_source"] == local.SOURCE else ""),
+                ("Welcome checks", str(free) if free else ""),
+            ) if value],
+            "button": "Open their account",
+            "preheader": f"{name} created an account.",
+            "footer": "alerts",
+        }
+        text, html = compose_email(subject, None, content, link)
+        sms = fit_sms(f"{app_name}: New sign-up: ", name, f". {link}")
+        return _dispatch(emails, subject, text, html, phones, sms)
+    except Exception:
+        log.exception("Couldn't send the sign-up alert for user %s", user_id)
+        return None
+
+
 def send_test(sent_by):
-    """Send a test to everyone on the list now, not in the background, so the page can say what happened.
-    Returns [(recipient, outcome)] where outcome is "sent", "not set up" or the reason it failed."""
-    emails, phones = recipients()
+    """Send a test to everyone on the lists now, not in the background, so the page can say what happened.
+    Each recipient is told which alerts they'll get. Returns [(recipient, outcome)] where outcome is
+    "sent", "not set up" or the reason it failed."""
     app_name = current_app.config["APP_NAME"]
     subject = f"Test alert from {app_name}"
-    text, html = compose_email(subject, None, {
-        "kicker": "Test",
-        "heading": "Alerts reach this address",
-        "intro": [f"{sent_by} sent this test from Admin → Messages. From now on, every new order and every "
-                  "payment is emailed here the moment it happens."],
-        "button": "Open Messages",
-        "footer": "alerts",
-    }, _link("admin.messages"))
-    sms = gsm7(f"{app_name}: test alert. New orders and payments will be texted to this number.")
     results = []
-    for to in phones:
-        r = send_sms(to, sms)
-        results.append((to, "sent" if r.ok else ("not set up" if "switched off" in (r.error or "") else r.error)))
-    for to in emails:
+    for to, events in everyone().items():
+        what = human_list(events)
+        if "@" not in to:
+            r = send_sms(to, gsm7(f"{app_name}: test alert. You'll get a text for {what}."))
+            results.append((to, "sent" if r.ok else ("not set up" if "switched off" in (r.error or "") else r.error)))
+            continue
+        text, html = compose_email(subject, None, {
+            "kicker": "Test",
+            "heading": "Alerts reach this address",
+            "intro": [f"{sent_by} sent this test from Admin → Messages. From now on, this address gets an "
+                      f"email for {what}, the moment they happen."],
+            "button": "Open Messages",
+            "footer": "alerts",
+        }, _link("admin.messages"))
         outcome = send_email(to, subject, text, html=html)
         if outcome == "failed":
             row = query("SELECT error FROM message_log WHERE channel = 'email' AND recipient = ?"

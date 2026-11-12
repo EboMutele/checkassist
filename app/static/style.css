@@ -887,5 +887,13 @@ table.queue { width: 100%; border-collapse: collapse; background: var(--paper); 
 .alerts-panel[open] > summary::before { transform: rotate(45deg); }
 .alerts-title { font-family: var(--serif); font-size: 1.25rem; font-weight: 500; letter-spacing: -.015em; }
 .alerts-panel > .hint { margin-top: 10px; }
-.alerts-form { margin-bottom: 0; max-width: 560px; }
-.alerts-form .callout { margin: 10px 0 0; }
+.alerts-form { margin: 14px 0 0; max-width: 760px; display: grid; gap: 14px; }
+.alerts-form .callout { margin: 0; }
+.alert-event { margin: 0; border: 1px solid var(--rule-strong); border-radius: var(--r-ctl); padding: 10px 16px 16px;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+.alert-event legend { font-weight: 700; padding: 0 6px; margin-left: -6px; }
+.alert-box { display: grid; gap: 4px; }
+.alert-box label { margin: 0; font-size: .875rem; }
+.alert-box textarea { min-height: 0; }
+.alert-note { grid-column: 1 / -1; }
+@media (max-width: 640px) { .alert-event { grid-template-columns: minmax(0, 1fr); } }

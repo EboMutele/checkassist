@@ -1,4 +1,4 @@
-"""Instant alerts to the business: an email and a text for every new order and every payment."""
+"""Instant alerts to the business: an email and a text for every sign-up, new order and payment."""
 import html
 
 import pytest
@@ -13,11 +13,21 @@ OWNERS = "owner@example.com\npartner@example.com"
 OWNER_PHONE = "+254722000111"
 
 
-def set_alerts(app, emails=OWNERS, phones=OWNER_PHONE):
+def set_alerts(app, emails=OWNERS, phones=OWNER_PHONE, events=("order", "payment")):
+    """Put the same people on the given events' lists; the other lists stay empty."""
     with app.app_context():
         e, _ = alerts.parse_emails(emails)
         p, _ = alerts.parse_phones(phones)
-        alerts.save_recipients(e, p)
+        alerts.save_recipients({ev: (e, p) if ev in events else ([], []) for ev, _ in alerts.EVENTS})
+
+
+def form(**lists):
+    """The Messages page form: form(order=("a@x.com", "07…"), signup=("b@x.com", "")) and so on."""
+    data = {}
+    for event, _ in alerts.EVENTS:
+        emails, phones = lists.get(event, ("", ""))
+        data[f"emails_{event}"], data[f"phones_{event}"] = emails, phones
+    return data
 
 
 def to(box, address):
@@ -43,42 +53,50 @@ def test_reading_the_lists_people_type(app):
 def test_admin_sets_them_on_the_messages_page(app, admin):
     page = admin.get("/admin/messages").get_data(as_text=True)
     assert "Instant alerts" in page and "Off" in page
-    r = admin.post("/admin/messages", {"emails": OWNERS, "phones": "0722 000 111", "action": "save"})
+    r = admin.post("/admin/messages", {**form(order=(OWNERS, "0722 000 111"), payment=("partner@example.com", "0722 000 111"),
+                                              signup=("owner@example.com", "")), "action": "save"})
     assert r.status_code == 302 and r.headers["Location"].endswith("/admin/messages")
     page = admin.get("/admin/messages").get_data(as_text=True)
     assert "Alerts saved." in page and "2 emails, 1 phone" in page and "+254722000111" in page
     with app.app_context():
-        assert alerts.recipients() == (["owner@example.com", "partner@example.com"], ["+254722000111"])
+        assert alerts.recipients("order") == (["owner@example.com", "partner@example.com"], ["+254722000111"])
+        assert alerts.recipients("payment") == (["partner@example.com"], ["+254722000111"])
+        assert alerts.recipients("signup") == (["owner@example.com"], [])
 
 
 def test_a_typo_is_explained_and_what_was_typed_stays(app, admin):
     set_alerts(app)
-    r = admin.post("/admin/messages", {"emails": "owner@example.com\npartner@gmail", "phones": OWNER_PHONE})
+    r = admin.post("/admin/messages", form(order=(OWNERS, OWNER_PHONE), payment=("owner@example.com\npartner@gmail", "")))
     page = html.unescape(r.get_data(as_text=True))
-    assert r.status_code == 400 and "“partner@gmail” isn't an email address." in page and "partner@gmail</textarea>" in page
+    assert r.status_code == 400 and "Payments: “partner@gmail” isn't an email address." in page
+    assert "partner@gmail</textarea>" in page
     with app.app_context():
-        assert alerts.recipients()[0] == ["owner@example.com", "partner@example.com"]  # unchanged
+        assert alerts.recipients("payment")[0] == ["owner@example.com", "partner@example.com"]  # unchanged
 
 
 def test_customers_cannot_change_them(app, alice):
-    r = alice.post("/admin/messages", {"emails": "me@example.com", "phones": ""})
+    r = alice.post("/admin/messages", form(order=("me@example.com", "")))
     assert r.status_code in (302, 403, 404)
     with app.app_context():
-        assert alerts.recipients() == ([], [])
+        assert alerts.recipients("order") == ([], [])
 
 
 def test_test_button_sends_now_and_says_what_happened(app, admin):
-    r = admin.post("/admin/messages", {"emails": OWNERS, "phones": OWNER_PHONE, "action": "test"})
+    r = admin.post("/admin/messages", {**form(order=(OWNERS, OWNER_PHONE), payment=("partner@example.com", OWNER_PHONE),
+                                              signup=("owner@example.com", "")), "action": "test"})
     page = admin.get(r.headers["Location"]).get_data(as_text=True)
     assert "Test sent to +254722000111, owner@example.com, partner@example.com" in page
-    assert [m["subject"] for m in app.config["MAIL_OUTBOX"]] == ["Test alert from NerdAccess"] * 2
+    box = app.config["MAIL_OUTBOX"]
+    assert [m["subject"] for m in box] == ["Test alert from NerdAccess"] * 2  # one each, not one per list
+    assert "email for new orders and sign-ups, the moment" in to(box, "owner@example.com")[0]["body"]
+    assert "email for new orders and payments, the moment" in to(box, "partner@example.com")[0]["body"]
     assert app.config["SMS_OUTBOX"][0] == {"to": "+254722000111", "message":
-                                           "NerdAccess: test alert. New orders and payments will be texted to this number."}
+                                           "NerdAccess: test alert. You'll get a text for new orders and payments."}
 
 
 def test_test_button_tells_you_texts_are_off(app, admin):
     app.config.update(SMS_OUTBOX=None, SMS_PROVIDER="")
-    r = admin.post("/admin/messages", {"emails": "owner@example.com", "phones": OWNER_PHONE, "action": "test"})
+    r = admin.post("/admin/messages", {**form(order=("owner@example.com", OWNER_PHONE)), "action": "test"})
     page = html.unescape(admin.get(r.headers["Location"]).get_data(as_text=True))
     assert "Test sent to owner@example.com. Not sent: +254722000111 (not set up)." in page
     assert "Texts are switched off on the server" in page
@@ -225,3 +243,59 @@ def test_line_breaks_in_a_title_stay_out_of_subjects_and_texts(app, alice, users
     subjects = {m["subject"] for m in to(app.config["MAIL_OUTBOX"], "owner@example.com")}
     assert subjects == {"New order from Alice Doe: Essay Bcc: someone@example.com"}
     assert "\n" not in app.config["SMS_OUTBOX"][0]["message"]
+
+
+# ---- each event has its own list ---------------------------------------------------------------------
+
+def test_each_event_goes_only_to_its_own_list(pay_app, nia, fake):
+    with pay_app.app_context():
+        alerts.save_recipients({"order": (["orders@example.com"], []), "payment": (["money@example.com"], []),
+                                "signup": (["people@example.com"], [])})
+    ref = _checkout(nia, "pack10")
+    fake.paid(ref, 3999)
+    _webhook(pay_app, "charge.success", fake.transactions[ref])
+    assert [m["to"] for m in pay_app.config["MAIL_OUTBOX"]] == ["money@example.com"]
+
+
+def test_sign_up_alert(app, users):
+    from conftest import Session
+    set_alerts(app, emails="people@example.com", phones=OWNER_PHONE, events=("signup",))
+    s = Session(app)
+    r = s.post("/register", {"name": "Wanjiku Mwangi", "email": "wanjiku@example.com", "phone": "+254 712 000 222",
+                             "password": "longenough", "confirm": "longenough"})
+    assert r.status_code == 302
+    (mail,) = app.config["MAIL_OUTBOX"]
+    assert mail["to"] == "people@example.com" and mail["subject"] == "New sign-up: Wanjiku Mwangi"
+    assert "Wanjiku Mwangi just signed up" in mail["html"] and "wanjiku@example.com" in mail["body"]
+    assert "That makes 3 customers." in mail["body"]  # alice and bob, then Wanjiku
+    with app.app_context():
+        uid = query("SELECT id FROM users WHERE email = 'wanjiku@example.com'", one=True)["id"]
+    assert f"https://example.test/admin/users/{uid}" in mail["body"]
+    (text,) = app.config["SMS_OUTBOX"]
+    assert text["message"] == f"NerdAccess: New sign-up: Wanjiku Mwangi. https://example.test/admin/users/{uid}"
+
+
+def test_sign_ups_send_nothing_when_their_list_is_empty(app, users):
+    from conftest import Session
+    set_alerts(app)  # orders and payments only
+    r = Session(app).post("/register", {"name": "Quiet", "email": "quiet@example.com", "phone": "+254 712 000 333",
+                                        "password": "longenough", "confirm": "longenough"})
+    assert r.status_code == 302  # signed up
+    assert app.config["MAIL_OUTBOX"] == [] and app.config["SMS_OUTBOX"] == []
+
+
+def test_lists_saved_before_the_split_still_work_for_orders_and_payments(app, admin):
+    with app.app_context():
+        alerts.set_setting("alert_emails", "owner@example.com")
+        alerts.set_setting("alert_phones", OWNER_PHONE)
+        from app.db import get_db
+        get_db().commit()
+        assert alerts.recipients("order") == (["owner@example.com"], [OWNER_PHONE])
+        assert alerts.recipients("payment") == (["owner@example.com"], [OWNER_PHONE])
+        assert alerts.recipients("signup") == ([], [])
+    page = admin.get("/admin/messages").get_data(as_text=True)
+    assert page.count("owner@example.com</textarea>") == 2  # shown under orders and payments, ready to edit
+    admin.post("/admin/messages", form(order=("owner@example.com", ""), payment=("", ""), signup=("", "")))
+    with app.app_context():
+        assert alerts.recipients("payment") == ([], [])  # the old shared list is gone once saved
+        assert alerts.get_setting("alert_emails", None) is None
