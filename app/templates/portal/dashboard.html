@@ -11,7 +11,7 @@
   {% if subs %}<a class="btn btn-primary" href="{{ url_for('portal.new_submission') }}">Upload a document</a>{% endif %}
 </header>
 
-{% if not current_user.phone %}
+{% if not current_user.phone and config.SMS_PROVIDER %}
   <p class="callout callout-warn">
     Add your mobile number and we'll text you the moment your feedback is ready. <a href="{{ url_for('auth.account') }}">Add mobile number</a>
   </p>

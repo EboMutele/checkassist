@@ -74,6 +74,7 @@ def test_local_numbers_accepted_with_default_country_code(tmp_path):
 
 
 def test_customer_without_number_is_prompted_and_can_add_one(app, bob):
+    app.config["SMS_PROVIDER"] = "africastalking"  # the prompt only appears while texts are switched on
     assert "Add your mobile number" in bob.get("/dashboard").get_data(as_text=True)
     r = bob.post("/account", {"name": "Bob Roe", "phone": "nope"})
     assert r.status_code == 400
@@ -244,3 +245,18 @@ def test_existing_database_gets_phone_column(tmp_path):
     cols = [r[1] for r in sqlite3.connect(db).execute("PRAGMA table_info(users)")]
     assert "phone" in cols
     assert sqlite3.connect(db).execute("SELECT email FROM users").fetchone()[0] == "old@example.com"
+
+
+def test_pages_only_promise_texts_while_texts_are_switched_on(app, client, alice):
+    """Texts need SMS_PROVIDER; until it's set, nothing on the site should promise one."""
+    for on in ("", "africastalking"):
+        app.config["SMS_PROVIDER"] = on
+        service = client.get("/essay-review").get_data(as_text=True)
+        signup = client.get("/register").get_data(as_text=True)
+        local_page = client.get("/local").get_data(as_text=True)
+        assert ("A text and an email when it" in service) == bool(on)
+        assert ("We'll text you when your feedback is ready" in signup) == bool(on)
+        assert ("Add your mobile number" in alice.get("/dashboard").get_data(as_text=True)) is False  # alice has one
+        assert ("An SMS to your phone" in local_page) == bool(on)
+        if not on:
+            assert "An email when it" in service and "only use it about your documents" in signup

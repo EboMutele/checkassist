@@ -32,7 +32,7 @@
     <ul class="checklist">
       <li>Short notes that put the most important fix first</li>
       <li>Your own file, marked up line by line</li>
-      <li>A text and an email when it's ready{% if review_minutes %}, usually about {{ review_minutes|minutes }} after you upload{% endif %}</li>
+      <li>{% if config.SMS_PROVIDER %}A text and an email{% else %}An email{% endif %} when it's ready{% if review_minutes %}, usually about {{ review_minutes|minutes }} after you upload{% endif %}</li>
       <li>The chance to ask your reviewer about any note, free</li>
     </ul>
   </section>

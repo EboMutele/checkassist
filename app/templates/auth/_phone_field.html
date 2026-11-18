@@ -19,5 +19,6 @@
 </div>
 <p id="phone-hint" class="hint">
   {%- if current_user and current_user.role == 'admin' %}Optional for reviewers.
-  {%- else %}We'll text you when your feedback is ready. Nothing else.{% endif -%}
+  {%- elif config.SMS_PROVIDER %}We'll text you when your feedback is ready. Nothing else.
+  {%- else %}We'll only use it about your documents. Nothing else.{% endif -%}
 </p>
