@@ -33,7 +33,7 @@
 
     <ul class="promises">
       {% if review_minutes %}<li>Notes back in about {{ review_minutes }} minutes</li>{% endif %}
-      <li>An SMS to your phone when it's ready</li>
+      <li>{% if config.SMS_PROVIDER %}An SMS to your phone{% else %}An email{% endif %} when it's ready</li>
       <li>Read by a person, not software</li>
       <li>Only you and your reviewer can open it</li>
     </ul>
